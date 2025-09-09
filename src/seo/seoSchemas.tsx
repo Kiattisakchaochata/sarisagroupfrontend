@@ -1,132 +1,106 @@
 // src/seo/seoSchemas.tsx
-'use client'
+import React from 'react';
 
-import {
-  BreadcrumbJsonLd,
-  LocalBusinessJsonLd,
-  VideoJsonLd,
-} from 'next-seo'
+type OpeningHour = {
+  dayOfWeek: string; // e.g. "Monday"
+  opens: string;     // "08:00"
+  closes: string;    // "19:30"
+};
 
-type StoreSchemaProps = {
-  id: string
-  name: string
-  description?: string
-  phone?: string | null
-  address?: string
-  latitude?: number | null
-  longitude?: number | null
-  url: string            // canonical ของหน้าร้าน เช่น `${SITE_URL}/stores/${slug-or-id}`
-  images?: string[]      // รูปประกอบ
-  categoryName?: string  // ชื่อหมวด เช่น "คาเฟ่นม"
-  rating?: number        // 0..5
-  reviewCount?: number
-  openingHours?: Array<{
-    dayOfWeek:
-      | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'
-    opens: string  // "08:00"
-    closes: string // "19:00"
-  }>
-  videos?: Array<{
-    title: string
-    url: string         // YouTube URL
-    uploadDate?: string // ISO
-    thumbnailUrl?: string
-    description?: string
-  }>
-  breadcrumbPath?: Array<{ name: string; item: string }>
-}
+type VideoLite = {
+  title: string;
+  url: string;
+  thumbnailUrl?: string;
+};
 
-export function StoreJsonLd(props: StoreSchemaProps) {
+export type StoreJsonLdProps = {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  telephone?: string;
+  images?: string[];
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  categoryName?: string;
+  rating?: number;
+  reviewCount?: number;
+  openingHours?: OpeningHour[];
+  videos?: VideoLite[];
+};
+
+export default function StoreJsonLd(props: StoreJsonLdProps) {
   const {
+    url,
     name,
     description,
-    phone,
+    telephone,
+    images,
     address,
     latitude,
     longitude,
-    url,
-    images = [],
-    categoryName,
     rating,
     reviewCount,
-    openingHours = [],
-    videos = [],
-    breadcrumbPath = [
-      { name: 'หน้าแรก', item: '/' },
-      { name: 'ร้านค้า', item: '/stores' },
-      { name, item: url },
-    ],
-  } = props
+    openingHours,
+    videos,
+  } = props;
 
-  const hasGeo = typeof latitude === 'number' && typeof longitude === 'number'
+  // สร้าง JSON-LD แบบ type-safe (ไม่มี any)
+  const data: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `${url}#store`,
+    url,
+    name,
+    description: description || undefined,
+    image: images && images.length > 0 ? images : undefined,
+    telephone: telephone || undefined,
+    address: address
+      ? {
+          '@type': 'PostalAddress',
+          streetAddress: address,
+          addressCountry: 'TH',
+        }
+      : undefined,
+    geo:
+      typeof latitude === 'number' && typeof longitude === 'number'
+        ? {
+            '@type': 'GeoCoordinates',
+            latitude,
+            longitude,
+          }
+        : undefined,
+    aggregateRating:
+      typeof reviewCount === 'number' && reviewCount > 0
+        ? {
+            '@type': 'AggregateRating',
+            ratingValue: typeof rating === 'number' ? rating : 0,
+            reviewCount,
+          }
+        : undefined,
+    openingHoursSpecification: openingHours?.map((h) => ({
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: h.dayOfWeek,
+      opens: h.opens,
+      closes: h.closes,
+    })),
+    hasPart:
+      videos && videos.length > 0
+        ? videos.map((v) => ({
+            '@type': 'VideoObject',
+            name: v.title,
+            contentUrl: v.url,
+            thumbnailUrl: v.thumbnailUrl,
+          }))
+        : undefined,
+  };
 
   return (
-    <>
-      {/* Breadcrumb */}
-      <BreadcrumbJsonLd
-        itemListElements={breadcrumbPath.map((b, idx) => ({
-          position: idx + 1,
-          name: b.name,
-          item: b.item,
-        }))}
-      />
-
-      {/* Local Business */}
-      <LocalBusinessJsonLd
-        type="LocalBusiness"
-        id={url}
-        name={name}
-        description={description}
-        url={url}
-        telephone={phone || undefined}
-        images={images}
-        areaServed={['Thailand']}
-        priceRange="฿฿"
-        // หมวดหมู่ (as keywords)
-        knowsAbout={categoryName ? [categoryName] : undefined}
-        // ที่อยู่แบบง่าย (ไม่มีการแยก street/city ก็ส่งเป็น string เดียว)
-        address={
-          address
-            ? {
-                streetAddress: address,
-                addressLocality: 'Thailand',
-                addressCountry: 'TH',
-              }
-            : undefined
-        }
-        geo={
-          hasGeo
-            ? {
-                latitude: Number(latitude),
-                longitude: Number(longitude),
-              }
-            : undefined
-        }
-        // ดาว + รีวิวรวม
-        ratingValue={typeof rating === 'number' ? rating : undefined}
-        reviewCount={typeof reviewCount === 'number' ? reviewCount : undefined}
-        // เวลาเปิด-ปิด (schema.org format)
-        openingHours={openingHours.map((h) => ({
-          dayOfWeek: h.dayOfWeek,
-          opens: h.opens,
-          closes: h.closes,
-        }))}
-      />
-
-      {/* วิดีโอ (ถ้ามี) */}
-      {videos.map((v, idx) => (
-        <VideoJsonLd
-          key={idx}
-          name={v.title}
-          description={v.description || description || name}
-          uploadDate={v.uploadDate || new Date().toISOString()}
-          thumbnailUrls={
-            v.thumbnailUrl ? [v.thumbnailUrl] : images.length ? [images[0]] : undefined
-          }
-          contentUrl={v.url}
-          embedUrl={v.url}
-        />
-      ))}
-    </>
-  )
+    <script
+      type="application/ld+json"
+      // ไม่ใช้ any: stringify จาก object ที่พิมพ์ชัดเจนด้านบน
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  );
 }

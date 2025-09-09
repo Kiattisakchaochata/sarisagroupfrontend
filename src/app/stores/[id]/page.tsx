@@ -1,4 +1,5 @@
-import { StoreJsonLd } from '@/seo/seoSchemas'
+// src/app/stores/[id]/page.tsx
+import StoreJsonLd from '@/seo/seoSchemas'
 
 type SocialLinks = string | Record<string, unknown> | null
 
@@ -20,22 +21,18 @@ type ApiStore = {
   avg_rating?: number
   review_count?: number
   openingHours?: Array<{
-    day: 'MON'|'TUE'|'WED'|'THU'|'FRI'|'SAT'|'SUN'
+    day: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN'
     openTime: string
     closeTime: string
     isOpen: boolean
   }>
 }
 
-type ApiVideosResp = {
-  videos?: Array<{
-    title: string
-    youtube_url: string
-    thumbnail_url?: string | null
-  }>
-}
+// ✅ แก้ type ให้ไม่ชน: ใช้ NonNullable ก่อนค่อย [number]
+type DayKey = NonNullable<ApiStore['openingHours']>[number]['day']
+type DayName = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'
 
-const DAY_MAP: Record<string, 'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'|'Saturday'|'Sunday'> = {
+const DAY_MAP: Record<DayKey, DayName> = {
   MON: 'Monday',
   TUE: 'Tuesday',
   WED: 'Wednesday',
@@ -45,22 +42,29 @@ const DAY_MAP: Record<string, 'Monday'|'Tuesday'|'Wednesday'|'Thursday'|'Friday'
   SUN: 'Sunday',
 }
 
+type VideoApi = {
+  id: string
+  title: string
+  youtube_url: string
+  thumbnail_url?: string | null
+}
+
 export default async function StoreDetailPage({ params }: { params: { id: string } }) {
   const base = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8877'
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-  const store: ApiStore = await fetch(`${base}/api/stores/${params.id}`, { cache: 'no-store' })
-    .then(r => r.json())
+  const storeRes = await fetch(`${base}/api/stores/${params.id}`, { cache: 'no-store' })
+  const store: ApiStore = await storeRes.json()
 
   const images: string[] = [
     ...(store.cover_image ? [store.cover_image] : []),
-    ...((store.images || []).map(i => i.image_url)),
+    ...((store.images || []).map((i) => i.image_url)),
   ]
 
   const openingHours = (store.openingHours || [])
-    .filter(h => h.isOpen)
-    .map(h => ({
-      dayOfWeek: DAY_MAP[h.day] || 'Monday',
+    .filter((h) => h.isOpen)
+    .map((h) => ({
+      dayOfWeek: DAY_MAP[h.day],
       opens: h.openTime,
       closes: h.closeTime,
     }))
@@ -69,18 +73,18 @@ export default async function StoreDetailPage({ params }: { params: { id: string
 
   let videos: Array<{ title: string; url: string; thumbnailUrl?: string }> = []
   try {
-    const res: ApiVideosResp = await fetch(
-      `${base}/api/videos?store_id=${params.id}&active=1`,
-      { cache: 'no-store' }
-    ).then(r => r.json())
-
-    videos = (res?.videos || []).map(v => ({
-      title: v.title,
-      url: v.youtube_url,
-      thumbnailUrl: v.thumbnail_url || undefined,
-    }))
+    const res = await fetch(`${base}/api/videos?store_id=${params.id}&active=1`, {
+      cache: 'no-store',
+    })
+    const data: { videos?: VideoApi[] } = await res.json()
+    videos =
+      (data.videos || []).map((v) => ({
+        title: v.title,
+        url: v.youtube_url,
+        thumbnailUrl: v.thumbnail_url ?? undefined,
+      })) ?? []
   } catch {
-    // ignore
+    // swallow
   }
 
   return (
@@ -89,12 +93,12 @@ export default async function StoreDetailPage({ params }: { params: { id: string
         id={store.id}
         name={store.name}
         description={store.description}
-        phone={store.phone ?? undefined}
+        url={canonicalUrl}
+        telephone={store.phone ?? undefined}
+        images={images.length ? images : undefined}
         address={store.address}
         latitude={store.latitude ?? undefined}
         longitude={store.longitude ?? undefined}
-        url={canonicalUrl}
-        images={images}
         categoryName={store.category?.name}
         rating={store.avg_rating}
         reviewCount={store.review_count}

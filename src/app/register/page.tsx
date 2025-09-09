@@ -19,7 +19,7 @@ export default function RegisterPage() {
       // TODO: call your API here
       // await fetch('/api/auth/register', { method:'POST', body: JSON.stringify({ name, email, password }) })
       alert('สมัครสมาชิกสำเร็จ (ตัวอย่าง)'); // ลบได้เมื่อเชื่อม API จริง
-    } catch (err) {
+    } catch {
       setError('สมัครไม่สำเร็จ กรุณาลองใหม่');
     } finally {
       setSubmitting(false);
