@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperCore } from 'swiper';
+import type { PaginationOptions } from 'swiper/types';
 import { Pagination, Autoplay } from 'swiper/modules';
 import Image from 'next/image';
 
@@ -19,7 +20,9 @@ type BannerItem = {
 export default function CategoryHeroSwiper({
   title,
   items,
+  // การ์ดแนวตั้งขนาดเล็กลง (4:3)
   cardRatio = 'pt-[133%]',
+  // เลื่อนแบบนุ่มๆ
   speed = 600,
 }: {
   title: string;
@@ -44,11 +47,12 @@ export default function CategoryHeroSwiper({
         className="category-rail"
         style={{ overflow: 'hidden' }}
         onBeforeInit={(swiper: SwiperCore) => {
-          // bind external pagination element (no ts-ignore)
           const el = pagRef.current;
           if (el) {
-            // Swiper types allow partial overwrite
-            (swiper.params.pagination as any) = { el, clickable: true };
+            swiper.params.pagination = {
+              el,
+              clickable: true,
+            } as PaginationOptions;
           }
         }}
         autoplay={{
@@ -81,7 +85,6 @@ export default function CategoryHeroSwiper({
                   fill
                   className="absolute inset-0 object-cover"
                   sizes="(min-width:1024px) 32vw, (min-width:640px) 45vw, 90vw"
-                  unoptimized
                 />
               </div>
             </div>
@@ -89,6 +92,7 @@ export default function CategoryHeroSwiper({
         ))}
       </Swiper>
 
+      {/* external pagination: ไม่ทับรูป */}
       <div ref={pagRef} className="cat-pagination" />
     </section>
   );

@@ -1,19 +1,20 @@
 'use client'
-
 import { useEffect } from 'react'
+
+type TTQ = {
+  methods: string[]
+  setAndDefer: (t: Record<string, unknown>, e: string) => void
+  _q?: unknown[][]
+  _i?: Record<string, unknown[]>
+  instance: (t: string) => unknown[]
+  load?: (id: string) => void
+  page?: (...args: unknown[]) => void
+  [k: string]: unknown
+}
 
 declare global {
   interface Window {
-    ttq?: {
-      methods: string[]
-      setAndDefer: (t: any, e: string) => void
-      _q?: unknown[][]
-      _i?: Record<string, unknown[]>
-      instance: (t: string) => unknown[]
-      load?: (id: string) => void
-      page?: (...args: unknown[]) => void
-      [k: string]: unknown
-    }
+    ttq?: TTQ
   }
 }
 
@@ -25,21 +26,21 @@ export default function TiktokPixel() {
 
     if (typeof window !== 'undefined' && !window.ttq) {
       (function (w: Window, d: Document) {
-        const ttq: Required<NonNullable<Window['ttq']>> = (w.ttq = (w.ttq || {}) as any)
+        const ttq: TTQ = (w.ttq = (w.ttq || {}) as TTQ)
         ttq.methods = [
-          'page','track','identify','instances','debug','on','off','once','ready',
-          'alias','group','enableCookie','disableCookie',
+          'page','track','identify','instances','debug','on','off','once',
+          'ready','alias','group','enableCookie','disableCookie',
         ]
-        ttq.setAndDefer = function (t: any, e: string) {
-          t[e] = function (...args: unknown[]) {
-            ;(t._q = t._q || []).push([e, args])
+        ttq.setAndDefer = function (t: Record<string, unknown>, e: string) {
+          ;(t as TTQ)[e] = function (...args: unknown[]) {
+            ;((t as TTQ)._q = (t as TTQ)._q || []).push([e, args])
           }
         }
-        for (let i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]!)
+        for (let i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq as unknown as Record<string, unknown>, ttq.methods[i]!)
 
         ttq.instance = function (t: string) {
           const e = (ttq._i = ttq._i || {})
-          return (e[t] = e[t] || []), ttq.setAndDefer(e[t], 'load'), e[t]
+          return (e[t] = e[t] || []), ttq.setAndDefer(e as unknown as Record<string, unknown>, 'load'), e[t]!
         }
 
         const s = d.createElement('script')

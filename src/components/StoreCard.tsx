@@ -1,3 +1,7 @@
+'use client';
+import Image from 'next/image';
+import Link from 'next/link';
+
 type Store = {
   id: string;
   name: string;
@@ -8,10 +12,10 @@ type Store = {
 
 export default function StoreCard({ store }: { store: Store }) {
   return (
-    <a href={`/stores/${store.id}`} className="card bg-base-100 shadow hover:shadow-md transition rounded-2xl">
-      <figure className="aspect-[16/10] overflow-hidden rounded-t-2xl bg-base-200">
+    <Link href={`/stores/${store.id}`} className="card bg-base-100 shadow hover:shadow-md transition rounded-2xl">
+      <figure className="aspect-[16/10] overflow-hidden rounded-t-2xl bg-base-200 relative">
         {store.cover_image ? (
-          <img src={store.cover_image} alt={store.name} className="w-full h-full object-cover" />
+          <Image src={store.cover_image} alt={store.name} fill className="object-cover" sizes="(min-width:1024px) 25vw, 50vw" />
         ) : (
           <div className="w-full h-full grid place-items-center opacity-70">ไม่มีรูป</div>
         )}
@@ -25,6 +29,6 @@ export default function StoreCard({ store }: { store: Store }) {
           <p className="text-sm text-base-content/70 line-clamp-2 mt-1">{store.description}</p>
         ) : null}
       </div>
-    </a>
+    </Link>
   );
 }

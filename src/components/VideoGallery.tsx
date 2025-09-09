@@ -1,8 +1,9 @@
-// src/components/VideoGallery.tsx
 'use client';
 
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swrFetcher';
+import Image from 'next/image';
+import Link from 'next/link';
 
 type Video = {
   id: string;
@@ -12,7 +13,7 @@ type Video = {
 };
 
 export default function VideoGallery({
-  showHeader = false,   // ✅ default ไม่โชว์หัวข้อ (ให้ page.tsx เป็นคนใส่)
+  showHeader = false,
   headerTitle = 'วิดีโอรีวิว',
   allHref = '/videos',
 }: {
@@ -30,11 +31,10 @@ export default function VideoGallery({
 
   return (
     <section className="mt-6">
-      {/* ✅ เผื่อใช้ที่หน้าอื่นได้ จะโชว์หัวข้อเมื่อส่ง showHeader=true */}
       {showHeader && (
         <div className="section-header">
           <h2 className="section-title">{headerTitle}</h2>
-          <a href={allHref} className="link-pill">ดูทั้งหมด</a>
+          <Link href={allHref} className="link-pill">ดูทั้งหมด</Link>
         </div>
       )}
 
@@ -54,9 +54,9 @@ export default function VideoGallery({
               rel="noreferrer"
               className="card bg-base-100 rounded-2xl shadow hover:shadow-md transition"
             >
-              <figure className="aspect-video overflow-hidden rounded-t-2xl bg-base-200">
+              <figure className="aspect-video overflow-hidden rounded-t-2xl bg-base-200 relative">
                 {v.thumbnail_url ? (
-                  <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover" />
+                  <Image src={v.thumbnail_url} alt={v.title} fill className="object-cover" sizes="(min-width:1024px) 25vw, 50vw" />
                 ) : (
                   <div className="w-full h-full grid place-items-center opacity-70">Video</div>
                 )}

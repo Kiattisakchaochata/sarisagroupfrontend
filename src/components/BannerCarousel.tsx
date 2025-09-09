@@ -1,6 +1,8 @@
 'use client';
 import useSWR from 'swr';
-import swrFetcher from '@/lib/swrFetcher';
+import { swrFetcher } from '@/lib/swrFetcher';
+import Image from 'next/image';
+import Link from 'next/link';
 
 type Banner = {
   id: string;
@@ -18,27 +20,38 @@ export default function BannerCarousel() {
 
   return (
     <div className="w-full">
-      {isLoading && (
-        <div className="skeleton h-48 w-full rounded-2xl" />
-      )}
+      {isLoading && <div className="skeleton h-48 w-full rounded-2xl" />}
 
       {!isLoading && banners.length > 0 && (
         <div className="carousel w-full rounded-2xl overflow-hidden">
           {banners.map((b, idx) => (
             <div id={`banner-${idx}`} className="carousel-item w-full" key={b.id}>
               {b.href ? (
-                <a href={b.href} className="block w-full">
-                  <img src={b.image_url} alt={b.alt_text || b.title || 'banner'} className="w-full object-cover max-h-[420px]" />
-                </a>
+                <Link href={b.href} className="block w-full">
+                  <Image
+                    src={b.image_url}
+                    alt={b.alt_text || b.title || 'banner'}
+                    width={1600}
+                    height={600}
+                    className="w-full object-cover max-h-[420px]"
+                    priority={idx === 0}
+                  />
+                </Link>
               ) : (
-                <img src={b.image_url} alt={b.alt_text || b.title || 'banner'} className="w-full object-cover max-h-[420px]" />
+                <Image
+                  src={b.image_url}
+                  alt={b.alt_text || b.title || 'banner'}
+                  width={1600}
+                  height={600}
+                  className="w-full object-cover max-h-[420px]"
+                  priority={idx === 0}
+                />
               )}
             </div>
           ))}
         </div>
       )}
 
-      {/* dots */}
       {banners.length > 1 && (
         <div className="flex justify-center gap-2 py-3">
           {banners.map((_b, i) => (
