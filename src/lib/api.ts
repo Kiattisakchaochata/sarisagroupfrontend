@@ -1,8 +1,7 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8877';
 
-export async function apiGet<T = any>(path: string, init?: RequestInit): Promise<T> {
+export async function apiGet<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    // หน้า Home ขอสด ๆ
     cache: 'no-store',
     ...init,
     headers: {
@@ -11,8 +10,8 @@ export async function apiGet<T = any>(path: string, init?: RequestInit): Promise
     },
   });
   if (!res.ok) {
-    const text = await res.text().catch(()=>'');
+    const text = await res.text().catch(() => '');
     throw new Error(`GET ${path} ${res.status}: ${text}`);
   }
-  return res.json();
+  return res.json() as Promise<T>;
 }

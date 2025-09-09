@@ -1,3 +1,7 @@
+'use client'
+
+import Link from 'next/link'
+
 export default function Footer() {
   return (
     <footer className="mt-16 border-t">
@@ -8,14 +12,16 @@ export default function Footer() {
             ทำธุรกิจเพื่อชุมชนอย่างยั่งยืน – ขาดทุนไม่ว่า เสียชื่อไม่ได้
           </p>
         </div>
+
         <div>
           <h5 className="font-medium">ลิงก์</h5>
           <ul className="mt-2 space-y-1 text-sm">
-            <li><a href="/about" className="link">เกี่ยวกับเรา</a></li>
-            <li><a href="/stores" className="link">ร้านค้าทั้งหมด</a></li>
-            <li><a href="/videos" className="link">วิดีโอ</a></li>
+            <li><Link href="/about" className="link">เกี่ยวกับเรา</Link></li>
+            <li><Link href="/stores" className="link">ร้านค้าทั้งหมด</Link></li>
+            <li><Link href="/videos" className="link">วิดีโอ</Link></li>
           </ul>
         </div>
+
         <div>
           <h5 className="font-medium">ติดต่อ</h5>
           <p className="text-sm mt-2 opacity-80">อีเมล: hello@sarisagroup.co</p>

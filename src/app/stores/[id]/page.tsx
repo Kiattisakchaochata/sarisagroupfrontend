@@ -1,5 +1,6 @@
-// src/app/stores/[id]/page.tsx
 import { StoreJsonLd } from '@/seo/seoSchemas'
+
+type SocialLinks = string | Record<string, unknown> | null
 
 type ApiStore = {
   id: string
@@ -15,7 +16,7 @@ type ApiStore = {
   cover_image?: string | null
   images?: { image_url: string }[]
   category?: { name?: string; slug?: string }
-  social_links?: any // อาจเป็น string หรือ JSON
+  social_links?: SocialLinks
   avg_rating?: number
   review_count?: number
   openingHours?: Array<{
@@ -23,6 +24,14 @@ type ApiStore = {
     openTime: string
     closeTime: string
     isOpen: boolean
+  }>
+}
+
+type ApiVideosResp = {
+  videos?: Array<{
+    title: string
+    youtube_url: string
+    thumbnail_url?: string | null
   }>
 }
 
@@ -43,41 +52,39 @@ export default async function StoreDetailPage({ params }: { params: { id: string
   const store: ApiStore = await fetch(`${base}/api/stores/${params.id}`, { cache: 'no-store' })
     .then(r => r.json())
 
-  // รูปหลัก + แกลเลอรี -> images[]
   const images: string[] = [
     ...(store.cover_image ? [store.cover_image] : []),
     ...((store.images || []).map(i => i.image_url)),
   ]
 
-  // แปลง opening hours ไปเป็น schema.org
   const openingHours = (store.openingHours || [])
     .filter(h => h.isOpen)
     .map(h => ({
       dayOfWeek: DAY_MAP[h.day] || 'Monday',
-      opens: h.openTime,    // "08:00"
-      closes: h.closeTime,  // "19:30"
+      opens: h.openTime,
+      closes: h.closeTime,
     }))
 
-  // ค่า canonical ของหน้าร้าน
   const canonicalUrl = `${siteUrl}/stores/${store.slug || params.id}`
 
-  // (ถ้าอยาก) ดึงวิดีโอที่ map กับร้านนี้ (public API เรามี)
   let videos: Array<{ title: string; url: string; thumbnailUrl?: string }> = []
   try {
-    const res = await fetch(
+    const res: ApiVideosResp = await fetch(
       `${base}/api/videos?store_id=${params.id}&active=1`,
       { cache: 'no-store' }
     ).then(r => r.json())
-    videos = (res?.videos || []).map((v: any) => ({
+
+    videos = (res?.videos || []).map(v => ({
       title: v.title,
       url: v.youtube_url,
       thumbnailUrl: v.thumbnail_url || undefined,
     }))
-  } catch {}
+  } catch {
+    // ignore
+  }
 
   return (
     <>
-      {/* ✅ JSON-LD/SEO จากข้อมูลจริง */}
       <StoreJsonLd
         id={store.id}
         name={store.name}
@@ -95,11 +102,10 @@ export default async function StoreDetailPage({ params }: { params: { id: string
         videos={videos}
       />
 
-      {/* ====== เนื้อหาหน้าจริง ====== */}
       <div className="py-6 space-y-4">
         <h1 className="text-2xl font-bold">{store.name}</h1>
         {store.description ? <p className="opacity-80">{store.description}</p> : null}
-        {/* TODO: ใส่แกลเลอรี/แผนที่/รีวิว/วิดีโอ ตาม UX ที่วางไว้ */}
+        {/* TODO: gallery / map / reviews / videos */}
       </div>
     </>
   )

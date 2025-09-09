@@ -1,7 +1,9 @@
 'use client';
+
 import useSWR from 'swr';
-import swrFetcher from '@/lib/swrFetcher';
+import { swrFetcher } from '@/lib/swrFetcher';
 import StoreCard from './StoreCard';
+import Link from 'next/link';
 
 type Store = {
   id: string;
@@ -12,7 +14,10 @@ type Store = {
 };
 
 export default function PopularStores() {
-  const { data, error, isLoading } = useSWR<{ stores: Store[] }>('/api/stores/popular', swrFetcher);
+  const { data, error, isLoading } = useSWR<{ stores: Store[] }>(
+    '/api/stores/popular',
+    swrFetcher
+  );
 
   if (error) return null;
   const stores = data?.stores || [];
@@ -21,8 +26,9 @@ export default function PopularStores() {
     <section className="mt-10">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xl font-semibold">ร้านยอดนิยม ⭐️</h2>
-        <a href="/stores" className="btn btn-sm btn-ghost">ดูทั้งหมด</a>
+        <Link href="/stores" className="btn btn-sm btn-ghost">ดูทั้งหมด</Link>
       </div>
+
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <div key={i} className="skeleton h-56 rounded-2xl" />)}

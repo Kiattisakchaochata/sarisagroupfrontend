@@ -1,3 +1,7 @@
+'use client'
+
+import Link from 'next/link'
+
 export default function Hero() {
   return (
     <section className="mt-6">
@@ -13,8 +17,8 @@ export default function Hero() {
               ใช้พลังงานทดแทน และช่วยสร้างงานในท้องถิ่น
             </p>
             <div className="mt-6 flex justify-center gap-3">
-              <a className="btn btn-primary" href="/stores">สำรวจร้าน</a>
-              <a className="btn btn-ghost" href="/about">รู้จักเรา</a>
+              <Link className="btn btn-primary" href="/stores">สำรวจร้าน</Link>
+              <Link className="btn btn-ghost" href="/about">รู้จักเรา</Link>
             </div>
           </div>
         </div>
