@@ -1,103 +1,129 @@
-import Image from "next/image";
+// src/app/page.tsx
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
+import ImpactStrip from '@/components/ImpactStrip'
+import VideoGallery from '@/components/VideoGallery'
+import PromoSwiper from '@/components/swipers/PromoSwiper'
+import EventsSwiper, { type EventCard } from '@/components/swipers/EventsSwiper'
+import JsonLd from '@/components/JsonLd'
+import CategoryHeroSwiper from '@/components/swipers/CategoryHeroSwiper'
+import { bannerGroups } from '@/data/bannerGroups'
 
-export default function Home() {
+export default function HomePage() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+
+  // === SEO JSON-LD ===
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    url: siteUrl,
+    name: 'Sarisagroup',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: `${siteUrl}/search?q={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
+  }
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Sarisagroup',
+    url: siteUrl,
+    logo: `${siteUrl}/apple-touch-icon.png`,
+  }
+
+  // === Mock Events ===
+  const mockEvents: EventCard[] = [
+    { id: 'e1', title: 'งานเปิดตัวสาขาใหม่', cover_image: '/images/mock/event-1.jpg', date: '2025-08-01T09:00:00Z', location: 'ขอนแก่น' },
+    { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-2.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
+  ]
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <JsonLd data={websiteJsonLd} />
+      <JsonLd data={orgJsonLd} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+      <Navbar />
+
+      <main className="container mx-auto max-w-7xl px-4 md:px-6 space-y-12 md:space-y-16">
+        {/* ===== Hero Section (copy + promo) ===== */}
+        <section className="relative mt-8 md:mt-14">
+          <div className="text-center space-y-3">
+            <h1 className="text-[22px] md:text-4xl leading-tight font-semibold tracking-tight text-gray-900">
+              ธุรกิจเพื่อชุมชน <span className="font-bold">– ขาดทุนไม่ว่า เสียชื่อไม่ได้</span>
+            </h1>
+
+            <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed">
+              ร้านอาหาร • คาเฟ่ • เสริมสวย • คาร์แคร์ ฯลฯ — เน้นคุณภาพ รสชาติอร่อย
+              ใช้พลังงานทดแทน และช่วยสร้างงานในท้องถิ่น
+            </p>
+          </div>
+
+          {/* Banner (ดูโปร่ง สายตาไม่หนัก) */}
+          <div className="mt-6 md:mt-8">
+            <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-black/5">
+              <PromoSwiper />
+            </div>
+          </div>
+        </section>
+
+        {/* ===== หมวดหลักแบบสไลด์แนวตั้ง ===== */}
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">🍜 ร้านอาหารเด่น</h2>
+            <a href="/categories/food" className="link-pill">ดูทั้งหมด</a>
+          </div>
+          <CategoryHeroSwiper title="" items={bannerGroups.food} cardRatio="pt-[125%]" speed={12000} />
+        </section>
+
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">☕ คาเฟ่ & เครื่องดื่ม</h2>
+            <a href="/categories/cafe" className="link-pill">ดูทั้งหมด</a>
+          </div>
+          <CategoryHeroSwiper title="" items={bannerGroups.cafe} cardRatio="pt-[125%]" speed={12000} />
+        </section>
+
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">💄 ร้านเสริมสวย</h2>
+            <a href="/categories/beauty" className="link-pill">ดูทั้งหมด</a>
+          </div>
+          <CategoryHeroSwiper title="" items={bannerGroups.beauty} cardRatio="pt-[125%]" speed={12000} />
+        </section>
+
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">🚗 คาร์แคร์ & คาเฟ่</h2>
+            <a href="/categories/carcare" className="link-pill">ดูทั้งหมด</a>
+          </div>
+          <CategoryHeroSwiper title="" items={bannerGroups.carcare} cardRatio="pt-[125%]" speed={12000} />
+        </section>
+
+        {/* ===== แถบข้อความ Impact / จุดยืนของแบรนด์ ===== */}
+        <ImpactStrip />
+
+        {/* ===== วิดีโอรีวิว (คงเหลืออันเดียว) ===== */}
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">วิดีโอรีวิว</h2>
+            <a href="/videos/reviews" className="link-pill">ดูทั้งหมด</a>
+          </div>
+          {/* ไม่ส่งพร็อพซ้ำหัวข้อแล้ว */}
+          <VideoGallery />
+        </section>
+
+        {/* ===== กิจกรรมของเรา ===== */}
+        <section>
+          <div className="section-header">
+            <h2 className="section-title">กิจกรรม</h2>
+            <a href="/events" className="link-pill">ดูทั้งหมด</a>
+          </div>
+          <EventsSwiper items={mockEvents} />
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+
+      <Footer />
+    </>
+  )
 }
