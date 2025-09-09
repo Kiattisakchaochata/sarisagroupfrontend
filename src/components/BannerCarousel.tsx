@@ -1,8 +1,10 @@
+// src/components/BannerCarousel.tsx
 'use client';
+
 import useSWR from 'swr';
 import { swrFetcher } from '@/lib/swrFetcher';
-import Image from 'next/image';
 import Link from 'next/link';
+import SafeImage from '@/components/SafeImage';
 
 type Banner = {
   id: string;
@@ -13,7 +15,10 @@ type Banner = {
 };
 
 export default function BannerCarousel() {
-  const { data, error, isLoading } = useSWR<{ banners: Banner[] }>('/api/banners', swrFetcher);
+  const { data, error, isLoading } = useSWR<{ banners: Banner[] }>(
+    '/api/banners',
+    swrFetcher
+  );
 
   if (error) return null;
   const banners = data?.banners || [];
@@ -24,27 +29,28 @@ export default function BannerCarousel() {
 
       {!isLoading && banners.length > 0 && (
         <div className="carousel w-full rounded-2xl overflow-hidden">
-          {banners.map((b, idx) => (
-            <div id={`banner-${idx}`} className="carousel-item w-full" key={b.id}>
+          {banners.map((b) => (
+            <div id={`banner-${b.id}`} className="carousel-item w-full" key={b.id}>
               {b.href ? (
                 <Link href={b.href} className="block w-full">
-                  <Image
+                  <SafeImage
                     src={b.image_url}
                     alt={b.alt_text || b.title || 'banner'}
                     width={1600}
                     height={600}
                     className="w-full object-cover max-h-[420px]"
-                    priority={idx === 0}
+                    // โหลดทันทีเฉพาะภาพแรกใน carousel (ปล่อยให้เบา)
+                    priority={false}
                   />
                 </Link>
               ) : (
-                <Image
+                <SafeImage
                   src={b.image_url}
                   alt={b.alt_text || b.title || 'banner'}
                   width={1600}
                   height={600}
                   className="w-full object-cover max-h-[420px]"
-                  priority={idx === 0}
+                  priority={false}
                 />
               )}
             </div>
@@ -54,8 +60,10 @@ export default function BannerCarousel() {
 
       {banners.length > 1 && (
         <div className="flex justify-center gap-2 py-3">
-          {banners.map((_b, i) => (
-            <a key={i} href={`#banner-${i}`} className="btn btn-xs">{i + 1}</a>
+          {banners.map((b, i) => (
+            <a key={b.id} href={`#banner-${b.id}`} className="btn btn-xs">
+              {i + 1}
+            </a>
           ))}
         </div>
       )}

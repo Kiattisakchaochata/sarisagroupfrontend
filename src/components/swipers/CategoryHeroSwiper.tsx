@@ -1,14 +1,16 @@
+// src/components/swipers/CategoryHeroSwiper.tsx
 'use client';
 
 import { useRef } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import type { Swiper as SwiperCore } from 'swiper';
-import type { PaginationOptions } from 'swiper/types';
 import { Pagination, Autoplay } from 'swiper/modules';
 import Image from 'next/image';
 
 import 'swiper/css';
 import 'swiper/css/pagination';
+
+// ✅ ใช้ type ของ PaginationOptions เพื่อเลี่ยง any
+import type { PaginationOptions } from 'swiper/types';
 
 type BannerItem = {
   id: string;
@@ -17,12 +19,17 @@ type BannerItem = {
   href?: string;
 };
 
+// ✅ สร้าง type เสริมสำหรับ Swiper instance ที่เราต้องการแก้ params.pagination
+type SwiperWithPagination = {
+  params: {
+    pagination?: PaginationOptions | boolean;
+  };
+};
+
 export default function CategoryHeroSwiper({
   title,
   items,
-  // การ์ดแนวตั้งขนาดเล็กลง (4:3)
-  cardRatio = 'pt-[133%]',
-  // เลื่อนแบบนุ่มๆ
+  cardRatio = 'pt-[133%]', // 4:3
   speed = 600,
 }: {
   title: string;
@@ -36,24 +43,22 @@ export default function CategoryHeroSwiper({
 
   return (
     <section className="my-10 overflow-x-hidden">
-      {title ? (
-        <div className="flex items-end justify-between mb-3">
-          <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
-        </div>
-      ) : null}
+      <div className="flex items-end justify-between mb-3">
+        <h2 className="text-xl md:text-2xl font-bold">{title}</h2>
+      </div>
 
       <Swiper
         modules={[Pagination, Autoplay]}
         className="category-rail"
         style={{ overflow: 'hidden' }}
-        onBeforeInit={(swiper: SwiperCore) => {
-          const el = pagRef.current;
-          if (el) {
-            swiper.params.pagination = {
-              el,
-              clickable: true,
-            } as PaginationOptions;
-          }
+        onBeforeInit={(swiper) => {
+          // ✅ cast เฉพาะส่วนที่ต้องการ โดยไม่ใช้ any
+          const s = swiper as unknown as SwiperWithPagination;
+          const paginationOpts: PaginationOptions = {
+            el: pagRef.current ?? undefined,
+            clickable: true,
+          };
+          s.params.pagination = paginationOpts;
         }}
         autoplay={{
           delay: 3500,
@@ -69,7 +74,7 @@ export default function CategoryHeroSwiper({
         slidesPerView={2}
         spaceBetween={16}
         breakpoints={{
-          640:  { slidesPerView: 2, spaceBetween: 18 },
+          640: { slidesPerView: 2, spaceBetween: 18 },
           1024: { slidesPerView: 3, spaceBetween: 20 },
         }}
         centeredSlides={false}
@@ -85,6 +90,7 @@ export default function CategoryHeroSwiper({
                   fill
                   className="absolute inset-0 object-cover"
                   sizes="(min-width:1024px) 32vw, (min-width:640px) 45vw, 90vw"
+                  unoptimized
                 />
               </div>
             </div>
@@ -92,7 +98,7 @@ export default function CategoryHeroSwiper({
         ))}
       </Swiper>
 
-      {/* external pagination: ไม่ทับรูป */}
+      {/* pagination อยู่นอก Swiper → ไม่ทับรูป */}
       <div ref={pagRef} className="cat-pagination" />
     </section>
   );

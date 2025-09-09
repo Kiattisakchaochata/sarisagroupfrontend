@@ -36,6 +36,8 @@ export default function HomePage() {
   const mockEvents: EventCard[] = [
     { id: 'e1', title: 'งานเปิดตัวสาขาใหม่', cover_image: '/images/mock/event-1.jpg', date: '2025-08-01T09:00:00Z', location: 'ขอนแก่น' },
     { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-2.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
+    { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-3.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
+    { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-4.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
   ]
 
   return (
