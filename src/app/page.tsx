@@ -1,13 +1,12 @@
-// src/app/page.tsx
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ImpactStrip from '@/components/ImpactStrip'
 import VideoGallery from '@/components/VideoGallery'
-// import PromoSwiper from '@/components/swipers/PromoSwiper'
 import EventsSwiper, { type EventCard } from '@/components/swipers/EventsSwiper'
 import JsonLd from '@/components/JsonLd'
 import CategoryHeroSwiper from '@/components/swipers/CategoryHeroSwiper'
 import { bannerGroups } from '@/data/bannerGroups'
+import StoresLogoWall from '@/components/StoresLogoWall'
 
 export default function HomePage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
@@ -32,12 +31,12 @@ export default function HomePage() {
     logo: `${siteUrl}/apple-touch-icon.png`,
   }
 
-  // === Mock Events ===
+  // === Mock Events (id ไม่ซ้ำ) ===
   const mockEvents: EventCard[] = [
-    { id: 'e1', title: 'งานเปิดตัวสาขาใหม่', cover_image: '/images/mock/event-1.jpg', date: '2025-08-01T09:00:00Z', location: 'ขอนแก่น' },
+    { id: 'e1', title: 'งานเปิดตัวสาขาใหม่',      cover_image: '/images/mock/event-1.jpg', date: '2025-08-01T09:00:00Z', location: 'ขอนแก่น' },
     { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-2.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
-    { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-3.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
-    { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-4.jpg', date: '2025-09-15T10:00:00Z', location: 'มหาสารคาม' },
+    { id: 'e3', title: 'เวิร์กช็อปชุมชน',          cover_image: '/images/mock/event-3.jpg', date: '2025-10-12T09:00:00Z', location: 'กาฬสินธุ์' },
+    { id: 'e4', title: 'กิจกรรมจิตอาสา',           cover_image: '/images/mock/event-4.jpg', date: '2025-11-05T10:00:00Z', location: 'มหาสารคาม' },
   ]
 
   return (
@@ -105,13 +104,25 @@ export default function HomePage() {
         {/* ===== แถบข้อความ Impact / จุดยืนของแบรนด์ ===== */}
         <ImpactStrip />
 
-        {/* ===== วิดีโอรีวิว (คงเหลืออันเดียว) ===== */}
+        {/* ✅ กริดโลโก้ร้าน ใต้พันธกิจ (component นี้ห่อ <section> ภายในอยู่แล้ว) */}
+        <StoresLogoWall
+          items={[
+            { id: 's1', name: 'ร้าน A', slug: 'brand-a', logo_url: '/images/mock/brand-a.png' },
+            { id: 's2', name: 'ร้าน B', slug: 'brand-b', logo_url: '/images/mock/brand-b.png' },
+            { id: 's3', name: 'ร้าน C', slug: 'brand-c', logo_url: '/images/mock/brand-c.png' },
+            { id: 's4', name: 'ร้าน D', slug: 'brand-d', logo_url: '/images/mock/brand-d.png' },
+          ]}
+          title="ร้านในเครือของเรา"
+         
+         
+        />
+
+        {/* ===== วิดีโอรีวิว ===== */}
         <section>
           <div className="section-header">
             <h2 className="section-title">วิดีโอรีวิว</h2>
             <a href="/videos/reviews" className="link-pill">ดูทั้งหมด</a>
           </div>
-          {/* ไม่ส่งพร็อพซ้ำหัวข้อแล้ว */}
           <VideoGallery />
         </section>
 

@@ -1,62 +1,104 @@
 @import "tailwindcss";
 
-/* ===== Apple-ish base ===== */
+/* ======== Brand palette (Luxury tone) ======== */
+/* ใช้พื้นหลัง off-white และตัวอักษรสีเข้มนุ่ม */
+:root {
+  --bg: #faf9f6;         /* off-white */
+  --text: #1a1a1a;       /* charcoal */
+  --muted: #6b7280;      /* gray-500 */
+  --card: #ffffff;       /* white surfaces */
+  --ring: rgba(0,0,0,.08);
+
+  /* accents */
+  --gold-500: #d4a017;   /* gold */
+  --gold-600: #b88b12;
+  --gold-700: #9a7510;
+
+  --lux-dark: #4b3832;   /* chocolate brown for headings */
+}
+
+/* ===== Base ===== */
 html, body {
-  background-color: #ffffff;
-  color: #111111;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: hidden;
 }
 
-/* Typography helpers (ใช้ซ้ำได้) */
+/* ===== Typography helpers ===== */
 /* Hero Headline */
 .headline {
-  @apply text-2xl md:text-3xl font-semibold tracking-tight text-gray-900 leading-snug;
+  @apply text-2xl md:text-3xl font-semibold tracking-tight leading-snug;
+  color: var(--lux-dark);
 }
 
 /* Hero Subhead */
 .subhead {
-  @apply text-sm md:text-base text-gray-600 max-w-2xl leading-relaxed;
+  @apply text-sm md:text-base max-w-2xl leading-relaxed;
+  color: var(--muted);
 }
-.section-title { @apply text-2xl md:text-3xl font-semibold text-gray-900; }
+
+/* Section Title */
+.section-title {
+  @apply text-2xl md:text-3xl font-semibold tracking-tight;
+  color: var(--lux-dark);
+}
 
 /* Header ของแต่ละ section + ปุ่ม “ดูทั้งหมด” */
 .section-header { @apply flex items-center justify-between gap-4 mb-4; }
+
 .link-pill{
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300
-         text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 transition;
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition;
+  border-color: var(--ring);
+  background: #fff;
+  color: #374151; /* gray-700 */
 }
-.link-pill:after{
-  content: "›";
-  @apply text-gray-400;
+.link-pill:hover{ background: #f3f4f6; } /* gray-100 */
+.link-pill:after{ content: "›"; @apply text-gray-400; }
+
+/* ===== Cards / Surfaces ===== */
+.card {
+  background: var(--card);
+  border-radius: 1rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,.06);
+  transition: transform .2s ease, box-shadow .2s ease;
+  border: 1px solid var(--ring);
+}
+.card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.08); }
+
+/* ===== Buttons ===== */
+/* ปุ่มหลัก: gradient ทองหรู */
+.btn-primary-pill{
+  @apply inline-flex items-center rounded-full px-5 py-2 text-sm font-medium text-white shadow-md transition;
+  background-image: linear-gradient(90deg, var(--gold-500), var(--gold-600));
+}
+.btn-primary-pill:hover{
+  background-image: linear-gradient(90deg, var(--gold-600), var(--gold-700));
 }
 
-/* Card */
-.card { background: #f5f5f7; border-radius: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,.06); transition: transform .2s ease; }
-.card:hover { transform: translateY(-2px); }
-
-/* ปุ่มใน Navbar */
+/* ปุ่มรองแบบโปร่งใส */
 .btn-ghost-pill{
-  @apply inline-flex items-center rounded-full border border-black/10 bg-white/80 px-3.5 py-1.5 
-         text-sm text-gray-800 shadow-sm hover:bg-white;
+  @apply inline-flex items-center rounded-full px-4 py-2 text-sm shadow-sm transition;
+  border: 1px solid var(--ring);
+  background: rgba(255,255,255,.85);
+  color: #374151;
   backdrop-filter: blur(10px);
 }
-.btn-primary-pill{
-  @apply inline-flex items-center rounded-full bg-[#0071e3] px-4 py-1.5 
-         text-sm font-medium text-white shadow-sm hover:bg-[#0a65c5];
-}
+.btn-ghost-pill:hover{ background: #ffffff; }
 
-/* จุดไข่ปลาในสไลด์ */
+/* จุดไข่ปลาในสไลด์ (ถ้าใช้ Swiper) */
 .cat-pagination .swiper-pagination-bullet {
-  width: 12px;
-  height: 12px;
-  background: #d1d1d6;
-  opacity: 1;
-  border-radius: 50%;
-  transition: background .2s, transform .2s;
+  width: 12px; height: 12px; background: #d1d5db; /* gray-300 */
+  opacity: 1; border-radius: 50%;
+  transition: background .2s, transform .2s, box-shadow .2s;
 }
 .cat-pagination .swiper-pagination-bullet-active {
-  background: #0071e3;
+  background: var(--gold-600);
   transform: scale(1.2);
-  box-shadow: 0 0 4px rgba(0,113,227,.5);
+  box-shadow: 0 0 0 4px rgba(212,160,23,.15);
+}
+
+/* Utility tweak: nicer container on very wide screens */
+@media (min-width: 1536px){
+  .container { max-width: 1200px; }
 }
