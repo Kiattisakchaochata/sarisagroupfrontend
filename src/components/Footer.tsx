@@ -3,79 +3,179 @@
 import Link from 'next/link'
 import React from 'react'
 
-/* ===== Inline brand icons (น้ำหนักเบา ไม่ต้องลง lib เพิ่ม) ===== */
-const IconFacebook = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-    <path d="M13.5 22v-8h2.7l.4-3h-3.1V8.4c0-.9.3-1.5 1.6-1.5H17V4.2c-.3 0-1.2-.2-2.3-.2-2.2 0-3.7 1.3-3.7 3.8V11H8v3h3v8h2.5Z"/>
+/* ========= Brand Social SVG (minimal, crisp) ========= */
+const Btn = ({
+  href,
+  label,
+  children,
+  className = '',
+}: React.PropsWithChildren<{ href: string; label: string; className?: string }>) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noreferrer"
+    aria-label={label}
+    className={[
+      'inline-flex h-10 w-10 items-center justify-center rounded-full border',
+      'border-slate-200 bg-white text-slate-600 shadow-sm transition',
+      'hover:shadow hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70',
+      className,
+    ].join(' ')}
+  >
+    {children}
+  </a>
+)
+
+const FbIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 320 512" width="18" height="18" aria-hidden="true" {...p}>
+    <path
+      fill="currentColor"
+      d="M279.1 288 293.3 195.3h-88.9V135.2c0-25.3 12.4-50.1 52.2-50.1H295V6.3S277.7 0 256.1 0c-73.2 0-121.1 44.4-121.1 124.7v70.6H86.4V288h48.6v224h92.7V288z"
+    />
   </svg>
 )
 
-const IconInstagram = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-    <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11Zm0 2a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm5.75-.9a.85.85 0 1 1 0 1.7.85.85 0 0 1 0-1.7Z"/>
+const IgIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 448 512" width="18" height="18" aria-hidden="true" {...p}>
+    <path
+      fill="currentColor"
+      d="M224 141c-63.6 0-114.9 51.3-114.9 114.9S160.4 370.8 224 370.8 338.9 319.5 338.9 255.9 287.6 141 224 141zm0 189.6a74.7 74.7 0 1 1 74.7-74.7 74.7 74.7 0 0 1-74.7 74.7zm146.4-194.3a26.8 26.8 0 1 1-26.8 26.8 26.8 26.8 0 0 1 26.8-26.8zM448 163.2c-1.7-35.7-9.9-67.3-36.2-93.6S353.9 35.1 318.2 33.4C294.5 31.7 257.8 31.7 225.4 31.7s-69.1 0-92.8 1.7c-35.7 1.7-67.3 9.9-93.6 36.2S4.5 127.5 2.8 163.2C1.1 186.9 1.1 223.6 1.1 256s0 69.1 1.7 92.8c1.7 35.7 9.9 67.3 36.2 93.6s57.9 34.5 93.6 36.2c23.7 1.7 60.4 1.7 92.8 1.7s69.1 0 92.8-1.7c35.7-1.7 67.3-9.9 93.6-36.2s34.5-57.9 36.2-93.6c1.7-23.7 1.7-60.4 1.7-92.8s0-69.1-1.7-92.8z"
+    />
   </svg>
 )
 
-/* LINE (โลโก้ทรงกล่องพูด) */
-const IconLine = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true" {...props}>
-    <path d="M24 6C13 6 4 13.6 4 22.9c0 6.1 4.1 11.4 10.2 14l-.8 5.2c-.1.9.9 1.5 1.6.9l6.5-4.7c.8.1 1.6.1 2.4.1 11 0 20-7.6 20-16.9C44 13.6 35 6 24 6Zm-7.9 21.3H12v-11h4.1v11Zm6.6 0h-4.1v-11h4.1v11Zm6.5 0h-4.1v-11h4.1v11Zm6.6-8.4h-4.1v8.4h-4.1v-11h8.2v2.6Z"/>
+const TkIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 448 512" width="18" height="18" aria-hidden="true" {...p}>
+    <path
+      fill="currentColor"
+      d="M448 209.9a210 210 0 0 1-122.8-39.3v178.8C325.2 424 264.5 484.6 190 484.6S54.8 424 54.8 349.4 115.4 214.2 190 214.2a134 134 0 0 1 20.5 1.6v71.8a60.6 60.6 0 1 0 40.2 59.4V0h74.5a135.6 135.6 0 0 0 122.8 135.5z"
+    />
   </svg>
 )
 
-/* TikTok (แบบเรียบ โทนเดียว) */
-const IconTiktok = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true" {...props}>
-    <path d="M33.4 16.5c2.4 1.8 5 2.7 7.9 2.8v6.3c-2.9 0-5.5-.8-7.9-2.1v8.7c0 7.3-5.9 12.8-13.2 12.8-7.2 0-13.1-5.5-13.1-12.8 0-7.2 5.9-12.7 13.1-12.7.8 0 1.5.1 2.3.2v6.6a6.3 6.3 0 0 0-2.3-.4c-3.4 0-6.1 2.6-6.1 6.3 0 3.6 2.7 6.3 6.1 6.3 3.5 0 6.1-2.7 6.1-6.3V4h6.2c0 4.6 1.9 8.5 4.9 11.3Z"/>
+/* ========= Editable hours & map links ========= */
+const HOURS = {
+  allInOne: 'ทุกวัน 08:00–20:00',          // อาหาร / คาเฟ่ / เสริมสวย
+  carcare: 'จ–ศ 08:30–18:00 (หยุด พุธ)',  // คาร์แคร์
+}
+
+const MAPS = {
+  food:   'https://maps.google.com/?q=15.12345,103.45678',
+  beauty: 'https://maps.google.com/?q=15.12345,103.45678',
+  cafe:   'https://maps.google.com/?q=15.12345,103.45678',
+  car:    'https://maps.google.com/?q=15.12888,103.45999',
+}
+
+const Pin = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" {...p}>
+    <path
+      fill="currentColor"
+      d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 14.5 9 2.5 2.5 0 0 1 12 11.5Z"
+    />
   </svg>
 )
 
 export default function Footer() {
   return (
-    <footer className="mt-16 border-t">
-      <div className="container mx-auto px-4 py-10 grid gap-8 md:grid-cols-3">
-        {/* Brand */}
+    <footer className="mt-16 border-t bg-[#faf9f7]">
+      <div className="container mx-auto px-4 py-10 grid gap-10 sm:grid-cols-2 md:grid-cols-4">
+        {/* Brand + social */}
         <div>
-          <h4 className="text-lg font-semibold" style={{color:'#4b3832'}}>Sarisagroup</h4>
-          <p className="text-sm opacity-80 mt-2">
+          <h4 className="text-lg font-semibold text-slate-800">Sarisagroup</h4>
+          <p className="text-sm text-slate-600 mt-2">
             ทำธุรกิจเพื่อชุมชนอย่างยั่งยืน – ขาดทุนไม่ว่า เสียชื่อไม่ได้
           </p>
 
-          {/* Socials */}
-          <div className="flex items-center gap-4 mt-4 text-gray-600">
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" className="hover:text-blue-600" aria-label="Facebook">
-              <IconFacebook width={22} height={22} />
-            </a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-pink-500" aria-label="Instagram">
-              <IconInstagram width={22} height={22} />
-            </a>
-            <a href="https://line.me" target="_blank" rel="noreferrer" className="hover:text-green-600" aria-label="LINE">
-              <IconLine width={22} height={22} />
-            </a>
-            <a href="https://tiktok.com" target="_blank" rel="noreferrer" className="hover:text-black" aria-label="TikTok">
-              <IconTiktok width={22} height={22} />
-            </a>
+          <div className="mt-4 flex items-center gap-3">
+            <Btn href="https://facebook.com" label="Facebook" className="hover:text-[#1877F2]">
+              <FbIcon />
+            </Btn>
+            <Btn href="https://instagram.com" label="Instagram" className="hover:text-[#E1306C]">
+              <IgIcon />
+            </Btn>
+            <Btn href="https://tiktok.com" label="TikTok" className="hover:text-black">
+              <TkIcon />
+            </Btn>
           </div>
         </div>
 
         {/* Links */}
         <div>
-          <h5 className="font-medium" style={{color:'#4b3832'}}>ลิงก์</h5>
-          <ul className="mt-2 space-y-1 text-sm">
+          <h5 className="font-medium text-slate-800">ลิงก์</h5>
+          <ul className="mt-2 space-y-1 text-sm text-slate-700">
             <li><Link href="/about"  className="hover:underline">เกี่ยวกับเรา</Link></li>
             <li><Link href="/stores" className="hover:underline">ร้านค้าทั้งหมด</Link></li>
             <li><Link href="/videos" className="hover:underline">วิดีโอ</Link></li>
           </ul>
         </div>
 
-        {/* Contact */}
+        {/* Contact + Hours */}
         <div>
-          <h5 className="font-medium" style={{color:'#4b3832'}}>ติดต่อ</h5>
-          <p className="text-sm mt-2 opacity-80">อีเมล: hello@sarisagroup.co</p>
+          <h5 className="font-medium text-slate-800">ติดต่อ</h5>
+          <p className="text-sm mt-2 text-slate-700">อีเมล: hello@sarisagroup.co</p>
+
+          <div className="mt-4">
+            <h6 className="text-sm font-medium text-slate-800">เวลาเปิด–ปิด</h6>
+            <ul className="mt-1 text-sm text-slate-700 space-y-1">
+              <li>🍜/☕/💄: {HOURS.allInOne}</li>
+              <li>🚗 คาร์แคร์: {HOURS.allInOne}</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Locations */}
+        <div>
+          <h5 className="font-medium text-slate-800">พิกัดร้าน</h5>
+          <ul className="mt-2 space-y-2 text-sm">
+            <li>
+              <a
+                href={MAPS.food}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+              >
+                <Pin className="text-indigo-500 group-hover:text-indigo-700" />
+                🍜 ร้านอาหาร
+              </a>
+            </li>
+            <li>
+              <a
+                href={MAPS.beauty}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+              >
+                <Pin className="text-indigo-500 group-hover:text-indigo-700" />
+                💄 ร้านเสริมสวย
+              </a>
+            </li>
+            <li>
+              <a
+                href={MAPS.cafe}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+              >
+                <Pin className="text-indigo-500 group-hover:text-indigo-700" />
+                ☕ คาเฟ่
+              </a>
+            </li>
+            <li>
+              <a
+                href={MAPS.car}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700"
+              >
+                <Pin className="text-indigo-500 group-hover:text-indigo-700" />
+                🚗 ร้านคาร์แคร์
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
 
-      <div className="text-center text-xs opacity-70 pb-6">
+      <div className="text-center text-xs text-slate-500 pb-6">
         © {new Date().getFullYear()} Sarisagroup. All rights reserved.
       </div>
     </footer>
