@@ -1,8 +1,8 @@
 // src/data/bannerGroups.ts
 export const bannerGroups = {
   food: [
-    { id: 'f1', image_url: '/images/food/food1.JPG', alt: 'อาหาร 1', title: 'อาหาร 1' },
-    { id: 'f2', image_url: '/images/food/food2.JPG', alt: 'อาหาร 2', title: 'อาหาร 2' },
+    { id: 'f1', image_url: '/images/food/food1.jpg', alt: 'อาหาร 1', title: 'อาหาร 1' },
+    { id: 'f2', image_url: '/images/food/food2.jpg', alt: 'อาหาร 2', title: 'อาหาร 2' },
     { id: 'f3', image_url: '/images/food/food3.JPG', alt: 'อาหาร 3', title: 'อาหาร 3' },
     { id: 'f4', image_url: '/images/food/food4.JPG', alt: 'อาหาร 4', title: 'อาหาร 4' },
     { id: 'f5', image_url: '/images/food/food5.JPG', alt: 'อาหาร 5', title: 'อาหาร 5' },
