@@ -68,7 +68,7 @@ export default function Navbar() {
               ค้นหา
             </Link>
             <Link href="/join" className="btn-primary-pill">
-              ร่วมเครือข่าย
+              เข้าสู่ระบบ
             </Link>
           </div>
 

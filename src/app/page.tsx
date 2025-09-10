@@ -3,7 +3,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ImpactStrip from '@/components/ImpactStrip'
 import VideoGallery from '@/components/VideoGallery'
-import PromoSwiper from '@/components/swipers/PromoSwiper'
+// import PromoSwiper from '@/components/swipers/PromoSwiper'
 import EventsSwiper, { type EventCard } from '@/components/swipers/EventsSwiper'
 import JsonLd from '@/components/JsonLd'
 import CategoryHeroSwiper from '@/components/swipers/CategoryHeroSwiper'
@@ -64,7 +64,7 @@ export default function HomePage() {
           {/* Banner (ดูโปร่ง สายตาไม่หนัก) */}
           <div className="mt-6 md:mt-8">
             <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-black/5">
-              <PromoSwiper />
+              {/* <PromoSwiper /> */}
             </div>
           </div>
         </section>
