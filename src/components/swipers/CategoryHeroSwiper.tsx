@@ -80,7 +80,7 @@ export default function CategoryHeroSwiper({
         centeredSlides={false}
         watchOverflow
       >
-        {items.map((b) => (
+        {items.map((b, idx) => (
           <SwiperSlide key={b.id}>
             <div className="rounded-xl overflow-hidden shadow-md bg-base-100">
               <div className={`relative w-full ${cardRatio}`}>
@@ -90,6 +90,10 @@ export default function CategoryHeroSwiper({
                   fill
                   className="absolute inset-0 object-cover"
                   sizes="(min-width:1024px) 32vw, (min-width:640px) 45vw, 90vw"
+                  // 👇 ทำให้รูปแรกของสไลด์เป็น LCP-friendly
+                  priority={idx === 0}
+                  fetchPriority={idx === 0 ? 'high' : 'auto'}
+                  // หมายเหตุ: คง unoptimized ตามของเดิมไว้ (ถ้าอยากใช้ pipeline ของ Next ค่อยเอาออกภายหลัง)
                   unoptimized
                 />
               </div>

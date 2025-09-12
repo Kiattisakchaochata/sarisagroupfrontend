@@ -10,13 +10,25 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.1",
+    "@prisma/client": "^6.16.1",
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "daisyui": "^5.1.8",
+    "lucide-react": "^0.544.0",
     "next": "15.5.2",
+    "next-auth": "^4.24.11",
     "next-seo": "^6.8.0",
+    "prisma": "^6.16.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hook-form": "^7.62.0",
+    "sweetalert2": "^11.23.0",
     "swiper": "^11.2.10",
-    "swr": "^2.3.6"
+    "swr": "^2.3.6",
+    "yup": "^1.7.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
