@@ -2,12 +2,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/ToastProvider';
 
+const API_BASE =
+  (process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, '')) || 'http://localhost:8877';
+
 export default function LoginForm() {
   const router = useRouter();
+  const search = useSearchParams();
   const { login } = useAuth();
   const { success, error } = useToast();
 
@@ -17,14 +21,10 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   // ตรวจรูปแบบอีเมลแบบเบา ๆ
-  const isEmailValid = (v: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+  const isEmailValid = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
   function cleanErrorMessage(input: string): string {
-    // เอาเฉพาะบรรทัดแรก กัน stack trace
     let msg = String(input || '').split('\n')[0];
-
-    // ล้าง HTML/nbsp/พาธไฟล์/ช่องว่างซ้ำ และนำหน้า "Error:"
     msg = msg
       .replace(/<[^>]*>/g, '')
       .replace(/&nbsp;/g, ' ')
@@ -34,51 +34,44 @@ export default function LoginForm() {
       .trim();
 
     const m = msg.toLowerCase();
-
-    // ----- mapping รายกรณี -----
     if (/unauthorized|401/.test(m)) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-
-    // อีเมลไม่ถูกต้อง (ไทย/อังกฤษ)
-    if (/(email|อีเมล).*(invalid|ไม่ถูกต้อง|ผิดรูปแบบ)/i.test(msg)) {
-      return 'อีเมลไม่ถูกต้อง';
-    }
-
-    // รหัสผ่านไม่ถูกต้อง (ไทย/อังกฤษ)
-    if (
-      /(password|รหัสผ่าน)/i.test(msg) &&
-      /(invalid|incorrect|wrong|ผิด|ไม่ถูก)/i.test(msg)
-    ) {
+    if (/(email|อีเมล).*(invalid|ไม่ถูกต้อง|ผิดรูปแบบ)/i.test(msg)) return 'อีเมลไม่ถูกต้อง';
+    if ((/(password|รหัสผ่าน)/i.test(msg)) && (/(invalid|incorrect|wrong|ผิด|ไม่ถูก)/i.test(msg))) {
       return 'รหัสผ่านไม่ถูกต้อง';
     }
-
-    // credential ผิดแบบรวม ๆ
     if (/invalid\s+credentials|email.*password.*(incorrect|invalid)/i.test(m)) {
       return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
     }
-
-    // ไม่พบบัญชีผู้ใช้
-    if (/(user|account|email).*(not.*found|ไม่มี|ไม่พบ)/i.test(m)) {
-      return 'ไม่พบบัญชีผู้ใช้';
-    }
-
-    // ข้อความกำกวมที่มักจะมาจาก 400
-    if (/bad request|invalid request/i.test(m)) {
-      return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
-    }
-
-    // เน็ต/เซิร์ฟเวอร์ล่ม
+    if (/(user|account|email).*(not.*found|ไม่มี|ไม่พบ)/i.test(m)) return 'ไม่พบบัญชีผู้ใช้';
+    if (/bad request|invalid request/i.test(m)) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
     if (/failed to fetch|network|ecconn|timeout/i.test(m)) {
       return 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบ Backend';
     }
-
     return msg || 'เข้าสู่ระบบไม่สำเร็จ';
+  }
+
+  // ดึง role ทันทีหลัง login เพื่อชัวร์เรื่องเส้นทาง
+  async function fetchRole(): Promise<string | undefined> {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('sg_token') : null;
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        credentials: 'include',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      if (!res.ok) return undefined;
+      const data = await res.json();
+      return data?.role;
+    } catch {
+      return undefined;
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
 
-    // ✅ ตรวจอีเมลก่อนยิง API
     if (!isEmailValid(email)) {
       error('อีเมลไม่ถูกต้อง');
       return;
@@ -89,20 +82,27 @@ export default function LoginForm() {
     try {
       await login(email, password);
       success('เข้าสู่ระบบสำเร็จ');
-      setTimeout(() => {
-        router.replace('/');
+
+      const urlRedirect = search.get('redirect');
+
+      // ถ้ามี redirect มากับ URL → ใช้ก่อน
+      if (urlRedirect) {
+        router.replace(urlRedirect);
         router.refresh();
-      }, 700);
+        return;
+      }
+
+      // ไม่มี redirect → เช็ค role จาก /auth/me ทันที
+      const role = await fetchRole();
+      const to = role === 'admin' ? '/admin' : '/';
+
+      router.replace(to);
+      router.refresh();
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : 'เข้าสู่ระบบไม่สำเร็จ';
       let pretty = cleanErrorMessage(raw);
 
-      // ✅ ถ้าแบ็กเอนด์ตอบกำกวม ให้เดาตามอินพุตผู้ใช้
-      if (
-        pretty === 'เข้าสู่ระบบไม่สำเร็จ' ||
-        pretty === 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-      ) {
-        // อีเมลถูกรูปแบบแล้ว → มักเป็นรหัสผ่านที่ผิด
+      if (pretty === 'เข้าสู่ระบบไม่สำเร็จ' || pretty === 'อีเมลหรือรหัสผ่านไม่ถูกต้อง') {
         pretty = isEmailValid(email) ? 'รหัสผ่านไม่ถูกต้อง' : 'อีเมลไม่ถูกต้อง';
       }
 

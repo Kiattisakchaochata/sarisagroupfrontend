@@ -1,5 +1,4 @@
-// src/app/stores/page.tsx
-'use client'
+'use client';
 
 import useSWR from 'swr'
 import { swrFetcher } from '@/lib/swrFetcher'
@@ -7,6 +6,7 @@ import StoreCard from '@/components/StoreCard'
 
 type Store = {
   id: string
+  slug?: string | null
   name: string
   description?: string
   cover_image?: string | null
@@ -28,9 +28,12 @@ export default function StoresPage() {
 
       {data?.stores?.length ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.stores.map((s) => (
-            <StoreCard key={s.id} store={s} />
-          ))}
+          {data.stores.map((s) => {
+            const href = s.slug
+              ? `/stores/byslug/${encodeURIComponent(s.slug)}`
+              : `/stores/${encodeURIComponent(s.id)}`
+            return <StoreCard key={s.id} store={s} href={href} />
+          })}
         </div>
       ) : (
         !isLoading && <p>ยังไม่มีร้าน</p>

@@ -1,12 +1,54 @@
+// src/app/page.tsx
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import ImpactStrip from '@/components/ImpactStrip';
-import VideoGallery from '@/components/VideoGallery';
-import EventsSwiper, { type EventCard } from '@/components/swipers/EventsSwiper';
 import JsonLd from '@/components/JsonLd';
-import CategoryHeroSwiper from '@/components/swipers/CategoryHeroSwiper';
-import { bannerGroups } from '@/data/bannerGroups';
-import StoresLogoWall from '@/components/StoresLogoWall';
+import HomeClient from '@/components/home/HomeClient';
+import type { Metadata } from 'next';
+
+const API_BASE =
+  (process.env.NEXT_PUBLIC_API_BASE ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:8877').replace(/\/$/, '');
+const API = /\/api$/.test(API_BASE) ? API_BASE : `${API_BASE}/api`;
+
+// ⬅️ เพิ่มเฉพาะส่วนนี้
+export async function generateMetadata(): Promise<Metadata> {
+  let page: any = null;
+  try {
+    const res = await fetch(`${API}/admin/seo/page?path=/`, { cache: 'no-store' });
+    if (res.ok) page = await res.json();
+  } catch {}
+
+  let site: any = null;
+  try {
+    const res = await fetch(`${API}/admin/seo/site`, { cache: 'no-store' });
+    if (res.ok) site = await res.json();
+  } catch {}
+
+  const title = page?.title || site?.meta_title || 'Sarisagroup | รวมธุรกิจชุมชน';
+  const description =
+    page?.description || site?.meta_description || 'โปรโมตธุรกิจชุมชนอย่างยั่งยืน';
+  const ogImage = page?.og_image || site?.og_image || '/og-default.jpg';
+
+  return {
+    title,
+    description,
+    robots: page?.noindex ? { index: false, follow: false } : undefined,
+    openGraph: {
+      title,
+      description,
+      url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+      siteName: 'Sarisagroup',
+      images: [{ url: ogImage, width: 1200, height: 630, alt: 'Sarisagroup' }],
+      locale: 'th_TH',
+      type: 'website',
+    },
+    alternates: {
+      canonical: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    },
+  };
+}
+// ----------------------------
 
 export default function HomePage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -31,130 +73,13 @@ export default function HomePage() {
     logo: `${siteUrl}/apple-touch-icon.png`,
   };
 
-  const mockEvents: EventCard[] = [
-    {
-      id: 'e1',
-      title: 'งานเปิดตัวสาขาใหม่',
-      cover_image: '/images/mock/event-1.jpg',
-      date: '2025-08-01T09:00:00Z',
-      location: 'ขอนแก่น',
-    },
-    {
-      id: 'e2',
-      title: 'Workshop ล้างรถรักษ์โลก',
-      cover_image: '/images/mock/event-2.jpg',
-      date: '2025-09-15T10:00:00Z',
-      location: 'มหาสารคาม',
-    },
-    {
-      id: 'e3',
-      title: 'เวิร์กช็อปชุมชน',
-      cover_image: '/images/mock/event-3.jpg',
-      date: '2025-10-12T09:00:00Z',
-      location: 'กาฬสินธุ์',
-    },
-    {
-      id: 'e4',
-      title: 'กิจกรรมจิตอาสา',
-      cover_image: '/images/mock/event-4.jpg',
-      date: '2025-11-05T10:00:00Z',
-      location: 'มหาสารคาม',
-    },
-  ];
-
   return (
     <>
       <JsonLd data={websiteJsonLd} />
       <JsonLd data={orgJsonLd} />
 
       <Navbar />
-
-      <main className="container mx-auto max-w-7xl px-4 md:px-6 space-y-12 md:space-y-16">
-        {/* Hero */}
-        <section className="relative mt-8 md:mt-14">
-          <div className="text-center space-y-3">
-            <h1 className="text-[22px] md:text-4xl leading-tight font-semibold tracking-tight text-gray-900">
-              ธุรกิจเพื่อชุมชน{' '}
-              <span className="font-bold">– ขาดทุนไม่ว่า เสียชื่อไม่ได้</span>
-            </h1>
-            <p className="text-sm md:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed">
-              ร้านอาหาร • คาเฟ่ • เสริมสวย • คาร์แคร์ ฯลฯ — เน้นคุณภาพ รสชาติอร่อย
-              ใช้พลังงานทดแทน และช่วยสร้างงานในท้องถิ่น
-            </p>
-          </div>
-
-          {/* Banner placeholder */}
-          <div className="mt-6 md:mt-8">
-            <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-black/5" />
-          </div>
-        </section>
-
-        {/* Categories */}
-        <section>
-          <div className="section-header">
-            <h2 className="section-title">🍜 ร้านอาหารเด่น</h2>
-            <a href="/categories/food" className="link-pill">ดูทั้งหมด</a>
-          </div>
-          <CategoryHeroSwiper title="" items={bannerGroups.food} cardRatio="pt-[125%]" speed={12000} />
-        </section>
-
-        <section>
-          <div className="section-header">
-            <h2 className="section-title">☕ คาเฟ่ & เครื่องดื่ม</h2>
-            <a href="/categories/cafe" className="link-pill">ดูทั้งหมด</a>
-          </div>
-          <CategoryHeroSwiper title="" items={bannerGroups.cafe} cardRatio="pt-[125%]" speed={12000} />
-        </section>
-
-        <section>
-          <div className="section-header">
-            <h2 className="section-title">💄 ร้านเสริมสวย</h2>
-            <a href="/categories/beauty" className="link-pill">ดูทั้งหมด</a>
-          </div>
-          <CategoryHeroSwiper title="" items={bannerGroups.beauty} cardRatio="pt-[125%]" speed={12000} />
-        </section>
-
-        <section>
-          <div className="section-header">
-            <h2 className="section-title">🚗 คาร์แคร์ & คาเฟ่</h2>
-            <a href="/categories/carcare" className="link-pill">ดูทั้งหมด</a>
-          </div>
-          <CategoryHeroSwiper title="" items={bannerGroups.carcare} cardRatio="pt-[125%]" speed={12000} />
-        </section>
-
-        {/* Impact */}
-        <ImpactStrip />
-
-        {/* Stores Logo */}
-        <StoresLogoWall
-          items={[
-            { id: 's1', name: 'ร้าน A', slug: 'brand-a', logo_url: '/images/mock/brand-a.png' },
-            { id: 's2', name: 'ร้าน B', slug: 'brand-b', logo_url: '/images/mock/brand-b.png' },
-            { id: 's3', name: 'ร้าน C', slug: 'brand-c', logo_url: '/images/mock/brand-c.png' },
-            { id: 's4', name: 'ร้าน D', slug: 'brand-d', logo_url: '/images/mock/brand-d.png' },
-          ]}
-          title="ร้านในเครือของเรา"
-        />
-
-        {/* Videos */}
-        <section>
-          <div className="section-header">
-            <h2 className="section-title">วิดีโอรีวิว</h2>
-            <a href="/videos/reviews" className="link-pill">ดูทั้งหมด</a>
-          </div>
-          <VideoGallery />
-        </section>
-
-        {/* Events */}
-        <section>
-          <div className="section-header">
-            <h2 className="section-title">กิจกรรม</h2>
-            <a href="/events" className="link-pill">ดูทั้งหมด</a>
-          </div>
-          <EventsSwiper items={mockEvents} />
-        </section>
-      </main>
-
+      <HomeClient />
       <Footer />
     </>
   );

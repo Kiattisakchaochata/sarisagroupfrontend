@@ -49,43 +49,54 @@ type VideoApi = {
   thumbnail_url?: string | null
 }
 
-export default async function StoreDetailPage({ params }: { params: { id: string } }) {
-  const base = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8877'
+export default async function StoreDetailPage({
+  // ✅ params เป็น Promise ของ { id: string }
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  // ✅ ต้อง await ก่อนใช้งาน
+  const { id } = await params
+
+  const base = (process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8877').replace(/\/$/, '')
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
-  const storeRes = await fetch(`${base}/api/stores/${params.id}`, { cache: 'no-store' })
+  const storeRes = await fetch(`${base}/api/stores/${id}`, { cache: 'no-store' })
   const store: ApiStore = await storeRes.json()
 
   const images: string[] = [
-    ...(store.cover_image ? [store.cover_image] : []),
-    ...((store.images || []).map((i) => i.image_url)),
-  ]
+    store.cover_image,
+    ...(store.images?.map((i) => i.image_url) ?? []),
+  ].filter(Boolean) as string[]
 
-  const openingHours = (store.openingHours || [])
-    .filter((h) => h.isOpen)
-    .map((h) => ({
-      dayOfWeek: DAY_MAP[h.day],
-      opens: h.openTime,
-      closes: h.closeTime,
-    }))
+  const canonicalUrl = `${siteUrl}/stores/${store.slug || id}`
 
-  const canonicalUrl = `${siteUrl}/stores/${store.slug || params.id}`
-
+  // ✅ map วิดีโอให้ตรง schema และใช้ youtube_url
   let videos: Array<{ title: string; url: string; thumbnailUrl?: string }> = []
   try {
-    const res = await fetch(`${base}/api/videos?store_id=${params.id}&active=1`, {
+    const res = await fetch(`${base}/api/videos?store_id=${id}&active=1`, {
       cache: 'no-store',
     })
     const data: { videos?: VideoApi[] } = await res.json()
     videos =
-      (data.videos || []).map((v) => ({
+      data.videos?.map((v) => ({
         title: v.title,
         url: v.youtube_url,
         thumbnailUrl: v.thumbnail_url ?? undefined,
       })) ?? []
   } catch {
-    // swallow
+    // ignore
   }
+
+  // ✅ แปลง openingHours จาก API -> โครงสำหรับ JSON-LD
+  const openingHours =
+    store.openingHours
+      ?.filter((oh) => oh.isOpen)
+      .map((oh) => ({
+        day: DAY_MAP[oh.day as DayKey],
+        openTime: oh.openTime,
+        closeTime: oh.closeTime,
+      })) ?? []
 
   return (
     <>

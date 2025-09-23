@@ -1,6 +1,5 @@
-'use client';
-import Image from 'next/image';
-import Link from 'next/link';
+import Link from "next/link";
+import Image from "next/image";
 
 type Store = {
   id: string;
@@ -12,22 +11,30 @@ type Store = {
 
 export default function StoreCard({ store }: { store: Store }) {
   return (
-    <Link href={`/stores/${store.id}`} className="card bg-base-100 shadow hover:shadow-md transition rounded-2xl">
+    <Link
+      href={`/stores/${store.id}/featured`} // ✅ พาไป featured โดยตรง
+      className="card bg-base-100 shadow hover:shadow-md transition rounded-2xl"
+    >
       <figure className="aspect-[16/10] overflow-hidden rounded-t-2xl bg-base-200 relative">
         {store.cover_image ? (
-          <Image src={store.cover_image} alt={store.name} fill className="object-cover" sizes="(min-width:1024px) 25vw, 50vw" />
+          <Image
+            src={store.cover_image}
+            alt={store.name}
+            fill
+            className="object-cover"
+            sizes="(min-width:1024px) 25vw, 50vw"
+          />
         ) : (
-          <div className="w-full h-full grid place-items-center opacity-70">ไม่มีรูป</div>
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            ไม่มีภาพ
+          </div>
         )}
       </figure>
       <div className="card-body p-4">
-        <h3 className="text-base font-semibold line-clamp-1">{store.name}</h3>
-        {store.category?.name ? (
-          <div className="badge badge-outline badge-sm">{store.category.name}</div>
-        ) : null}
-        {store.description ? (
-          <p className="text-sm text-base-content/70 line-clamp-2 mt-1">{store.description}</p>
-        ) : null}
+        <h2 className="card-title text-lg">{store.name}</h2>
+        <p className="text-sm text-gray-500 line-clamp-2">
+          {store.description || "ไม่มีคำอธิบาย"}
+        </p>
       </div>
     </Link>
   );

@@ -1,23 +1,20 @@
 @import "tailwindcss";
 
 /* ======== Brand palette (Luxury tone) ======== */
-/* ใช้พื้นหลัง off-white และตัวอักษรสีเข้มนุ่ม */
 :root {
-  --bg: #faf9f6;         /* off-white */
-  --text: #1a1a1a;       /* charcoal */
-  --muted: #6b7280;      /* gray-500 */
-  --card: #ffffff;       /* white surfaces */
-  --ring: rgba(0,0,0,.08);
+  --bg: #faf9f6;
+  --text: #1a1a1a;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --ring: rgba(0, 0, 0, .08);
 
-  /* accents */
-  --gold-500: #d4a017;   /* gold */
+  --gold-500: #d4a017;
   --gold-600: #b88b12;
   --gold-700: #9a7510;
 
-  --lux-dark: #4b3832;   /* chocolate brown for headings */
+  --lux-dark: #4b3832;
 }
 
-/* ===== Base ===== */
 html, body {
   background-color: var(--bg);
   color: var(--text);
@@ -25,38 +22,22 @@ html, body {
   overflow-x: hidden;
 }
 
-/* ===== Typography helpers ===== */
-/* Hero Headline */
-.headline {
-  @apply text-2xl md:text-3xl font-semibold tracking-tight leading-snug;
-  color: var(--lux-dark);
-}
-
-/* Hero Subhead */
-.subhead {
-  @apply text-sm md:text-base max-w-2xl leading-relaxed;
-  color: var(--muted);
-}
-
-/* Section Title */
-.section-title {
-  @apply text-2xl md:text-3xl font-semibold tracking-tight;
-  color: var(--lux-dark);
-}
-
-/* Header ของแต่ละ section + ปุ่ม “ดูทั้งหมด” */
+/* ===== Typography ===== */
+.headline { @apply text-2xl md:text-3xl font-semibold tracking-tight leading-snug; color: var(--lux-dark); }
+.subhead { @apply text-sm md:text-base max-w-2xl leading-relaxed; color: var(--muted); }
+.section-title { @apply text-2xl md:text-3xl font-semibold tracking-tight; color: var(--lux-dark); }
 .section-header { @apply flex items-center justify-between gap-4 mb-4; }
 
-.link-pill{
+.link-pill {
   @apply inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition;
   border-color: var(--ring);
   background: #fff;
-  color: #374151; /* gray-700 */
+  color: #374151;
 }
-.link-pill:hover{ background: #f3f4f6; } /* gray-100 */
-.link-pill:after{ content: "›"; @apply text-gray-400; }
+.link-pill:hover { background: #f3f4f6; }
+.link-pill:after { content: "›"; @apply text-gray-400; }
 
-/* ===== Cards / Surfaces ===== */
+/* ===== Cards ===== */
 .card {
   background: var(--card);
   border-radius: 1rem;
@@ -67,41 +48,81 @@ html, body {
 .card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.08); }
 
 /* ===== Buttons ===== */
-/* ปุ่มหลัก: gradient ทองหรู */
-.btn-primary-pill{
+.btn-primary-pill {
   @apply inline-flex items-center rounded-full px-5 py-2 text-sm font-medium text-white shadow-md transition;
   background-image: linear-gradient(90deg, var(--gold-500), var(--gold-600));
 }
-.btn-primary-pill:hover{
+.btn-primary-pill:hover {
   background-image: linear-gradient(90deg, var(--gold-600), var(--gold-700));
 }
 
-/* ปุ่มรองแบบโปร่งใส */
-.btn-ghost-pill{
+.btn-ghost-pill {
   @apply inline-flex items-center rounded-full px-4 py-2 text-sm shadow-sm transition;
   border: 1px solid var(--ring);
   background: rgba(255,255,255,.85);
   color: #374151;
   backdrop-filter: blur(10px);
 }
-.btn-ghost-pill:hover{ background: #ffffff; }
+.btn-ghost-pill:hover { background: #ffffff; }
 
-/* จุดไข่ปลาในสไลด์ (ถ้าใช้ Swiper) */
-.cat-pagination .swiper-pagination-bullet {
-  width: 12px; height: 12px; background: #d1d5db; /* gray-300 */
-  opacity: 1; border-radius: 50%;
-  transition: background .2s, transform .2s, box-shadow .2s;
-}
-.cat-pagination .swiper-pagination-bullet-active {
-  background: var(--gold-600);
-  transform: scale(1.2);
-  box-shadow: 0 0 0 4px rgba(212,160,23,.15);
+/* ===== Video slider fixes (paste this block) ===== */
+
+/* 1) ให้ wrapper ยืดสไลด์แต่ละใบเท่ากัน และรีเซ็ตความสูงที่ Swiper ใส่มา */
+.video-swiper .swiper-wrapper{ align-items: stretch; }
+.video-swiper .swiper-slide{ display:flex; height:auto !important; }
+
+/* 2) การ์ดภายในสไลด์ ไม่ต้องยืดเกินเนื้อหา แต่โครงสร้างเป็นคอลัมน์ */
+.video-swiper .swiper-slide > .card{
+  display:flex;
+  flex-direction:column;
+  /* ไม่ตั้ง height:100% เพื่อไม่ให้การ์ดสูงเกินจำเป็น */
 }
 
-/* Utility tweak: nicer container on very wide screens */
-@media (min-width: 1536px){
-  .container { max-width: 1200px; }
+/* 3) รูปด้านบนให้เป็นสัดส่วน 16:9 เท่ากันทุกใบ */
+.video-swiper .swiper-slide figure{
+  position:relative;
+  width:100%;
+  aspect-ratio:16/9;     /* บราวเซอร์ใหม่รองรับดี และแทนที่ class อื่นๆ ได้ */
+  overflow:hidden;
 }
-html[data-scroll-behavior="smooth"] {
-  scroll-behavior: smooth;
+
+/* 4) หัวข้อการ์ด — ตัดที่ 2 บรรทัดพอดี และจองพื้นที่เท่ากันทุกใบ */
+.video-card-title{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:0.875rem;        /* text-sm */
+  line-height:1.25rem;       /* leading-5 */
+  font-weight:500;
+  min-height:2.5rem;         /* = 2 บรรทัดพอดี */
+  margin:0;                  /* กัน margin แปลกๆ จาก lib อื่น */
+}
+
+/* 5) เพิ่มช่องไฟแนวตั้ง “ระหว่างแถว” โดยไม่เพิ่มช่องไฟแนวนอน */
+.video-swiper .swiper{ --row-gap: 24px; }          /* ปรับค่านี้ได้ 16–32 */
+.video-swiper .swiper-grid .swiper-wrapper{
+  row-gap: var(--row-gap) !important;
+}
+
+/* 6) bullets (คงสไตล์เดิม) */
+.video-pagination .swiper-pagination-bullet{
+  width:10px; height:10px; background:#d1d5db; opacity:1; border-radius:9999px;
+  transition:transform .2s, background .2s, box-shadow .2s;
+}
+.video-pagination .swiper-pagination-bullet-active{
+  background:var(--gold-600);
+  transform:scale(1.15);
+  box-shadow:0 0 0 4px rgba(212,160,23,.15);
+}
+
+/* wide container */
+@media (min-width: 1536px) { .container { max-width: 1200px; } }
+
+html[data-scroll-behavior="smooth"] { scroll-behavior: smooth; }
+
+/* ให้ Swal อยู่สูงกว่า modal ของเรา */
+.swal2-container {
+  z-index: 100000 !important;
 }

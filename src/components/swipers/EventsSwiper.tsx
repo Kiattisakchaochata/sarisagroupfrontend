@@ -10,29 +10,27 @@ export type EventCard = {
   id?: string | number;
   title: string;
   cover_image: string;
-  date?: string;      // ISO หรือ string ทั่วไปก็ได้
-  location?: string;
+  date?: string;      // ไม่แสดงผล
+  location?: string;  // ไม่แสดงผล
 };
 
-/* ฟอร์แมตวันที่ → ตัวอย่าง “5 พ.ย. 2025” (ไม่มีเวลา) */
-function formatThaiDate(d?: string) {
-  if (!d) return '';
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return ''; // กัน string ที่พาร์สไม่ได้
-  return new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(dt);
-}
-
 export default function EventsSwiper({ items }: { items: EventCard[] }) {
-  // ทำ key ให้ unique เสมอ
-  const seen = new Set<string>();
-  const slides = (items || []).map((ev, index) => {
-    let k = (ev.id ?? index).toString();
-    if (seen.has(k)) k = `${k}__${index}`;
-    seen.add(k);
-    return { ...ev, _key: k };
-  });
+  const base = Array.isArray(items) ? items : [];
 
-  if (!slides.length) return null;
+  // ✅ ให้แน่ใจว่ามีสไลด์พอ (8 ใบขึ้นไป) จะได้วนลูปไม่สะดุด
+  const MIN_SLIDES = 8;
+  const repeat = base.length > 0 ? Math.ceil(MIN_SLIDES / base.length) : 0;
+
+  const duplicated = repeat > 1
+    ? Array.from({ length: repeat }, (_, r) =>
+        base.map((ev, i) => ({
+          ...ev,
+          _dupKey: `${ev.id ?? i}-${r}`,
+        }))
+      ).flat()
+    : base.map((ev, i) => ({ ...ev, _dupKey: `${ev.id ?? i}-0` }));
+
+  if (!duplicated.length) return null;
 
   return (
     <section className="my-10">
@@ -40,17 +38,26 @@ export default function EventsSwiper({ items }: { items: EventCard[] }) {
         className="events-swiper"
         modules={[Pagination, Autoplay]}
         pagination={{ clickable: true }}
-        autoplay={{ delay: 3500, disableOnInteraction: false }}
+        autoplay={{
+          delay: 3000,
+          disableOnInteraction: false,
+          pauseOnMouseEnter: false,
+        }}
+        speed={800}
         spaceBetween={18}
         slidesPerView={1.06}
         breakpoints={{
           640: { slidesPerView: 2, spaceBetween: 20 },
           1024: { slidesPerView: 3, spaceBetween: 22 },
         }}
-        loop={slides.length > 3}
+        loop={true}
+        onBeforeInit={(swiper) => {
+          swiper.params.loopedSlides = 3;
+          swiper.params.loopAdditionalSlides = 3;
+        }}
       >
-        {slides.map((ev) => (
-          <SwiperSlide key={ev._key}>
+        {duplicated.map((ev) => (
+          <SwiperSlide key={ev._dupKey}>
             <div className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition hover:shadow-lg">
               <figure className="relative">
                 <Image
@@ -62,30 +69,16 @@ export default function EventsSwiper({ items }: { items: EventCard[] }) {
                   unoptimized
                 />
               </figure>
-
-              {/* เนื้อหาด้านล่าง: เว้นที่เยอะขึ้น และตัดเวลาออก */}
               <div className="p-4 md:p-5">
                 <h3 className="text-base md:text-lg font-semibold leading-snug">
                   {ev.title}
                 </h3>
-
-                {(ev.date || ev.location) && (
-                  <p className="mt-1 text-sm text-slate-600">
-                    {[
-                      formatThaiDate(ev.date), // ✅ ไม่มีเวลา
-                      ev.location,
-                    ]
-                      .filter(Boolean)
-                      .join(' • ')}
-                  </p>
-                )}
               </div>
             </div>
           </SwiperSlide>
         ))}
       </Swiper>
 
-      {/* ปรับตำแหน่งจุดเลื่อน (pagination) ให้อยู่ล่างสุด ไม่ทับการ์ด */}
       <style jsx global>{`
         .events-swiper .swiper-pagination {
           position: static;
@@ -94,13 +87,14 @@ export default function EventsSwiper({ items }: { items: EventCard[] }) {
         .events-swiper .swiper-pagination-bullet {
           width: 10px;
           height: 10px;
-          background: #d1d5db; /* slate-300 */
+          background: #d1d5db;
           opacity: 1;
           transition: transform 0.2s ease, background 0.2s ease;
         }
         .events-swiper .swiper-pagination-bullet-active {
-          background: #4f46e5; /* indigo-600 */
+          background: #f59e0b;
           transform: scale(1.15);
+          box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.18);
         }
       `}</style>
     </section>

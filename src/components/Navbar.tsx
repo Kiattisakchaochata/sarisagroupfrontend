@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 const NAV_LINKS = [
   { href: '/', label: 'หน้าหลัก' },
-  { href: '/videos', label: 'วิดีโอ' },
+  { href: '/videos/reviews', label: 'วิดีโอ' },   // ✅ ชี้ไปที่ reviews
   { href: '/contact', label: 'ติดต่อเรา' },
 ];
 
@@ -86,37 +86,35 @@ export default function Navbar() {
       return (
         <div className="relative" ref={menuRef}>
           <button
-            ref={profileBtnRef}
-            onClick={() => setMenuOpen((s) => !s)}
-            className={[
-              // ปุ่มโปรไฟล์ – โทนไล่สีจาง ๆ + ring + เงา
-              'group inline-flex items-center gap-3 rounded-full pl-1 pr-3 py-1.5',
-              'bg-white/80 shadow-sm ring-1 ring-indigo-100/60 transition',
-              'hover:bg-gradient-to-r hover:from-indigo-50 hover:via-rose-50 hover:to-emerald-50',
-              'hover:ring-indigo-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-300',
-            ].join(' ')}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-          >
-            <span
-              className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-b from-indigo-500 to-violet-500
-                         text-white font-semibold shadow-sm"
-            >
-              {initial}
-            </span>
-            <span className="text-sm text-slate-700 group-hover:text-slate-900">
-              {user?.name || 'โปรไฟล์'}
-            </span>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              className={`text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
-              fill="none"
-            >
-              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+  ref={profileBtnRef}
+  onClick={() => setMenuOpen((s) => !s)}
+  className={[
+    'group inline-flex items-center gap-3 rounded-full pl-1 pr-3 py-1.5',
+    // ปรับให้ปุ่มทึบขึ้นเล็กน้อย
+    'bg-white shadow-sm ring-1 ring-amber-100 transition',
+    'hover:bg-amber-50/60 hover:ring-amber-200 hover:shadow-md',
+    'focus:outline-none focus:ring-2 focus:ring-amber-300',
+  ].join(' ')}
+  aria-haspopup="menu"
+  aria-expanded={menuOpen}
+>
+  <span
+    className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-b from-amber-500 to-amber-600
+               text-white font-semibold shadow-sm"
+  >
+    {initial}
+  </span>
+  <span className="text-sm text-slate-700 group-hover:text-slate-900">
+    {user?.name || 'โปรไฟล์'}
+  </span>
+  <svg
+    width="18" height="18" viewBox="0 0 24 24"
+    className={`text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+    fill="none"
+  >
+    <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+</button>
 
           {/* Dropdown */}
           {menuOpen && (
@@ -137,6 +135,17 @@ export default function Navbar() {
               >
                 ดูโปรไฟล์
               </Link>
+
+              {/* 👇 ลิงก์ Admin ใน dropdown (เผื่ออยากเข้าทางนี้ด้วย) */}
+              {user?.role === 'admin' && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="mt-0.5 block w-full rounded-xl px-3.5 py-2 text-left text-sm text-indigo-700 hover:bg-indigo-50"
+                >
+                  Admin
+                </Link>
+              )}
 
               <button
                 onClick={handleLogout}
@@ -194,6 +203,18 @@ export default function Navbar() {
           >
             ดูโปรไฟล์
           </Link>
+
+          {/* 👇 ลิงก์ Admin ในเมนูมือถือ */}
+          {user?.role === 'admin' && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="block rounded-xl px-3 py-2 text-[15px] text-indigo-700 hover:bg-indigo-50 text-center"
+            >
+              Admin
+            </Link>
+          )}
+
           <button
             onClick={handleLogout}
             className={[
@@ -263,6 +284,18 @@ export default function Navbar() {
                   {l.label}
                 </Link>
               ))}
+
+              {/* 👇 ลิงก์ Admin (desktop) */}
+              {user?.role === 'admin' && (
+                <Link
+                  href="/admin"
+                  className="group relative rounded-full px-4 py-2 text-[15px] font-medium text-indigo-700 transition-all
+                             hover:text-indigo-900 hover:-translate-y-[1px]
+                             hover:bg-indigo-50 hover:ring-1 hover:ring-indigo-200/60"
+                >
+                  Admin
+                </Link>
+              )}
             </div>
 
             {/* Right actions (desktop) */}
@@ -302,6 +335,17 @@ export default function Navbar() {
                     {l.label}
                   </Link>
                 ))}
+
+                {/* 👇 ลิงก์ Admin (mobile) */}
+                {user?.role === 'admin' && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-[15px] text-indigo-700 hover:bg-indigo-50 transition"
+                  >
+                    Admin
+                  </Link>
+                )}
               </div>
 
               <div className="py-2 flex flex-col gap-2">
