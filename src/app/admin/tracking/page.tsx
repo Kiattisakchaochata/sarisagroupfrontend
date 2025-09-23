@@ -1,6 +1,9 @@
+// src/app/admin/tracking/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Swal } from '@/lib/swal';
 import { apiFetch } from '@/lib/api';
 
@@ -20,7 +23,7 @@ type TrackingScript = {
   updatedAt: string;
 };
 
-export default function AdminTrackingPage() {
+function AdminTrackingPageInner() {
   const [rows, setRows] = useState<TrackingScript[]>([]);
   const [loadErr, setLoadErr] = useState('');
   const [editing, setEditing] = useState<Partial<TrackingScript> | null>(null);
@@ -146,6 +149,14 @@ export default function AdminTrackingPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function AdminTrackingPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto max-w-5xl px-4 md:px-6 py-10 text-white">กำลังโหลด...</div>}>
+      <AdminTrackingPageInner />
+    </Suspense>
   );
 }
 

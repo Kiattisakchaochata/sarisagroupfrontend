@@ -1,8 +1,18 @@
 'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { swrFetcher } from '@/lib/swrFetcher';
+import { useRouter } from 'next/navigation';
+
+/* 👇 helper เหมือนไฟล์อื่น ๆ */
+function getApiBase() {
+  const raw =
+    process.env.NEXT_PUBLIC_API_BASE ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    'http://localhost:8877';
+  const trimmed = raw.replace(/\/$/, '');
+  return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
+}
+const API = getApiBase();
 
 type Store = {
   id: string;
@@ -16,9 +26,10 @@ export default function SearchInline({
   className = '',
   onSubmit,
 }: {
-  className?: string; // คุมขนาดจากภายนอกเท่านั้น
+  className?: string;
   onSubmit?: (e: React.FormEvent) => void;
 }) {
+  const router = useRouter();
   const [rawQuery, setRawQuery] = useState('');
   const [focused, setFocused] = useState(false);
 
@@ -29,14 +40,48 @@ export default function SearchInline({
     return () => clearTimeout(t);
   }, [rawQuery]);
 
-  useSWR<{ stores: Store[] }>(
-    query ? `/api/stores/search?q=${encodeURIComponent(query)}` : null,
-    swrFetcher
+  /* 🔁 SWR ใช้ URL จาก BE */
+  const { data } = useSWR<{ stores: Store[] }>(
+    query ? `${API}/stores/search?q=${encodeURIComponent(query)}` : null,
+    async (url: string) => {
+      const r = await fetch(url, { credentials: 'include' });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    },
+    { revalidateOnFocus: false }
   );
+  const stores: Store[] = useMemo(() => data?.stores ?? [], [data]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /* ✅ กด Enter แล้วค้นหาทันที (ไม่รอ debounce) */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit?.(e);
+
+    const q = rawQuery.trim().toLowerCase();
+    if (!q) return;
+
+    let list = stores;
+
+    if (!list.length) {
+      try {
+        const r = await fetch(`${API}/stores/search?q=${encodeURIComponent(q)}`, {
+          credentials: 'include',
+        });
+        if (r.ok) {
+          const j = await r.json();
+          list = Array.isArray(j?.stores) ? j.stores : [];
+        }
+      } catch {}
+    }
+
+    if (!list.length) return;
+
+    const exact = list.find((s) => s.name?.toLowerCase() === q);
+    const starts = list.find((s) => s.name?.toLowerCase().startsWith(q));
+    const contains = list.find((s) => s.name?.toLowerCase().includes(q));
+    const target = exact || starts || contains || list[0];
+
+    router.push(`/stores/${target.id}/featured`);
   };
 
   const canClear = useMemo(() => rawQuery.length > 0, [rawQuery]);
@@ -49,20 +94,12 @@ export default function SearchInline({
           'bg-white/90 backdrop-blur',
           'transition-all shadow-sm focus-within:shadow-md',
           focused ? 'ring-2 ring-indigo-500/20' : '',
-          // ❗️ไม่กำหนด width ภายใน ให้ภายนอกเป็นคนกำหนด
           className || 'h-11 md:h-12 w-full',
           'px-4 md:px-5',
         ].join(' ')}
       >
-        {/* icon */}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 text-gray-500">
-          <path
-            d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
 
         <input

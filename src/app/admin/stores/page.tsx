@@ -1,7 +1,10 @@
+// src/app/admin/stores/page.tsx
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { apiFetch } from '@/lib/api';
@@ -20,7 +23,7 @@ type StoreLite = {
   cover_image?: string | null;
 };
 
-export default function AdminStoresPage() {
+function AdminStoresPageInner() {
   // const { success, error } = useToast();
   const [stores, setStores] = useState<StoreLite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,5 +178,13 @@ export default function AdminStoresPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function AdminStoresPage() {
+  return (
+    <Suspense fallback={<div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-gray-300">กำลังโหลด...</div>}>
+      <AdminStoresPageInner />
+    </Suspense>
   );
 }

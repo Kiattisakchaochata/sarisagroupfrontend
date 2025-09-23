@@ -1,7 +1,9 @@
 // src/app/admin/seo/site/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Swal } from '@/lib/swal';
 import OgPicker4 from '@/components/admin/OgPicker4';
@@ -14,7 +16,7 @@ type SiteSeo = {
   jsonld?: any;      // จะฝัง image[] ทั้งหมด
 };
 
-export default function AdminSeoSitePage() {
+function AdminSeoSitePageInner() {
   const [form, setForm] = useState<SiteSeo>({});
   const [loading, setLoading] = useState(false);
   // เก็บรูป 4 ช่อง ให้เป็น controlled เสมอ
@@ -127,6 +129,14 @@ export default function AdminSeoSitePage() {
         </button>
       </div>
     </main>
+  );
+}
+
+export default function AdminSeoSitePage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto max-w-4xl px-4 md:px-6 py-10 text-white">กำลังโหลด...</div>}>
+      <AdminSeoSitePageInner />
+    </Suspense>
   );
 }
 

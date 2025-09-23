@@ -1,7 +1,9 @@
 // src/app/admin/seo/pages/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import OgPicker4 from '@/components/admin/OgPicker4';
 import { Swal } from '@/lib/swal';
@@ -105,81 +107,83 @@ export default function AdminSeoPagesPage() {
   );
 
   return (
-    <main className="container mx-auto max-w-5xl px-4 md:px-6 py-10 text-white space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Page SEO</h1>
-        <button onClick={startNew} className="rounded-full bg-amber-500 text-white px-5 py-2.5 font-semibold">
-          + สร้าง
-        </button>
-      </div>
-
-      {loadErr && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-200 p-4 flex items-start justify-between gap-4">
-          <div>
-            <div className="font-semibold">โหลดข้อมูลไม่สำเร็จ</div>
-            <div className="text-sm opacity-90 break-all">{loadErr}</div>
-            <div className="text-xs mt-1 opacity-70">
-              ตรวจสอบว่า backend มี route <code>/api/admin/seo/pages</code> แล้ว
-              frontend เรียกผ่าน <code>apiFetch('/admin/seo/pages')</code>
-            </div>
-          </div>
-          <button onClick={refresh} className="shrink-0 rounded-full bg-red-500/20 hover:bg-red-500/30 px-3 py-1 text-sm">
-            ลองใหม่
+    <Suspense fallback={<div className="container mx-auto max-w-5xl px-4 md:px-6 py-10 text-white">กำลังโหลด…</div>}>
+      <main className="container mx-auto max-w-5xl px-4 md:px-6 py-10 text-white space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Page SEO</h1>
+          <button onClick={startNew} className="rounded-full bg-amber-500 text-white px-5 py-2.5 font-semibold">
+            + สร้าง
           </button>
         </div>
-      )}
 
-      <div className="rounded-2xl border border-white/10 bg-[#111418] shadow">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-300">
-                <th className="p-3">Path</th>
-                <th className="p-3">Title</th>
-                <th className="p-3">Noindex</th>
-                <th className="p-3 w-36"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((r) => (
-                <tr key={r.id} className="border-t border-white/10">
-                  <td className="p-3 font-mono">{r.path}</td>
-                  <td className="p-3">{r.title || '-'}</td>
-                  <td className="p-3">{r.noindex ? '✅' : '—'}</td>
-                  <td className="p-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setEditing({ ...r, jsonld: safeJson(r.jsonld) })}
-                        className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15"
-                      >
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => onDelete(r.id)}
-                        className="px-3 py-1 rounded-full bg-red-600/80 hover:bg-red-600"
-                      >
-                        ลบ
-                      </button>
-                    </div>
-                  </td>
+        {loadErr && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-200 p-4 flex items-start justify-between gap-4">
+            <div>
+              <div className="font-semibold">โหลดข้อมูลไม่สำเร็จ</div>
+              <div className="text-sm opacity-90 break-all">{loadErr}</div>
+              <div className="text-xs mt-1 opacity-70">
+                ตรวจสอบว่า backend มี route <code>/api/admin/seo/pages</code> แล้ว
+                frontend เรียกผ่าน <code>apiFetch('/admin/seo/pages')</code>
+              </div>
+            </div>
+            <button onClick={refresh} className="shrink-0 rounded-full bg-red-500/20 hover:bg-red-500/30 px-3 py-1 text-sm">
+              ลองใหม่
+            </button>
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-white/10 bg-[#111418] shadow">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-300">
+                  <th className="p-3">Path</th>
+                  <th className="p-3">Title</th>
+                  <th className="p-3">Noindex</th>
+                  <th className="p-3 w-36"></th>
                 </tr>
-              ))}
-              {sorted.length === 0 && !loadErr && (
-                <tr><td className="p-4 text-gray-400" colSpan={4}>ยังไม่มีข้อมูล</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sorted.map((r) => (
+                  <tr key={r.id} className="border-t border-white/10">
+                    <td className="p-3 font-mono">{r.path}</td>
+                    <td className="p-3">{r.title || '-'}</td>
+                    <td className="p-3">{r.noindex ? '✅' : '—'}</td>
+                    <td className="p-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditing({ ...r, jsonld: safeJson(r.jsonld) })}
+                          className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15"
+                        >
+                          แก้ไข
+                        </button>
+                        <button
+                          onClick={() => onDelete(r.id)}
+                          className="px-3 py-1 rounded-full bg-red-600/80 hover:bg-red-600"
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {sorted.length === 0 && !loadErr && (
+                  <tr><td className="p-4 text-gray-400" colSpan={4}>ยังไม่มีข้อมูล</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {editing && (
-        <EditModal
-          editing={editing}
-          setEditing={setEditing}
-          onSave={onSave}
-        />
-      )}
-    </main>
+        {editing && (
+          <EditModal
+            editing={editing}
+            setEditing={setEditing}
+            onSave={onSave}
+          />
+        )}
+      </main>
+    </Suspense>
   );
 }
 

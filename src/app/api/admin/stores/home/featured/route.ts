@@ -1,6 +1,6 @@
 // src/app/api/admin/stores/home/featured/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';

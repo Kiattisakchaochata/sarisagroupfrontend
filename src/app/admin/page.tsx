@@ -1,6 +1,9 @@
+// src/app/admin/page.tsx
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 
@@ -30,7 +33,7 @@ type AdminStats = {
   }[];
 };
 
-export default function AdminPage() {
+function AdminPageInner() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +121,20 @@ export default function AdminPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="container mx-auto max-w-6xl px-4 md:px-6 py-10 text-white">
+          กำลังโหลด...
+        </main>
+      }
+    >
+      <AdminPageInner />
+    </Suspense>
   );
 }
 

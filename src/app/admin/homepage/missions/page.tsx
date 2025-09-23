@@ -1,7 +1,9 @@
 // src/app/admin/homepage/missions/page.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { apiFetch } from '@/lib/api';
 import { v4 as uuid } from 'uuid';
@@ -49,6 +51,16 @@ function toArrayMissions(missions: any): { id: string; title: string }[] {
 }
 
 export default function AdminHomepageMissionsPage() {
+  // ครอบทั้งหน้าไว้ใน Suspense เพื่อให้ผ่านเงื่อนไข useSearchParams() CSR bailout ของ Next
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-4xl p-4 md:p-6 text-white">กำลังโหลด…</div>}>
+      <AdminHomepageMissionsPageInner />
+    </Suspense>
+  );
+}
+
+/* ===== เนื้อหาเดิมย้ายมาไว้ใน Inner โดยคง logic ทุกอย่างตามเดิม ===== */
+function AdminHomepageMissionsPageInner() {
   const { data: raw, mutate, isLoading } = useSWR<RawAdminHomepage>(
     '/admin/homepage',
     (url) => apiFetch(url, { method: 'GET' }),
@@ -179,7 +191,6 @@ export default function AdminHomepageMissionsPage() {
         showConfirmButton: false,
         didClose: unlockScroll,
       });
-      // ❌ ตัด toast ออก เพื่อให้เหลือแค่ SweetAlert
     } catch (e) {
       console.error(e);
       Swal.close();
@@ -190,7 +201,6 @@ export default function AdminHomepageMissionsPage() {
         confirmButtonText: 'ปิด',
         didClose: unlockScroll,
       });
-      // ❌ ไม่เรียก error toast เช่นกัน
     } finally {
       setSaving(false);
     }
