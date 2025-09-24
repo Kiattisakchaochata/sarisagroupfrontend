@@ -18,6 +18,15 @@ type Contact = {
   order_number?: number;
 };
 
+/* เพิ่ม: โครง store แบบเบาๆ สำหรับดึงโลโก้ */
+type StoreLite = {
+  id: string;
+  name: string;
+  slug?: string | null;
+  logo_url?: string | null;
+  cover_image?: string | null;
+};
+
 function getApiBase() {
   const raw =
     process.env.NEXT_PUBLIC_API_BASE ??
@@ -59,14 +68,44 @@ function toEmbedIframeFromUrl(url?: string) {
   )}" width="100%" height="220" style="border:0" loading="lazy" allowfullscreen="" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
 }
 
+/* เพิ่ม: normalize stores (บาง API อาจเป็น {items} หรือ {stores}) */
+function normalizeStores(resp: any): StoreLite[] {
+  if (!resp) return [];
+  if (Array.isArray(resp.items)) return resp.items as StoreLite[];
+  if (Array.isArray(resp.stores)) return resp.stores as StoreLite[];
+  return [];
+}
+
 export default function ContactPage() {
   const API = getApiBase();
 
+  /* เดิม: ดึง contacts */
   const { data, error, isLoading } = useSWR<{ contacts: Contact[] }>(
     `${API}/contacts`,
     fetcher,
     { revalidateOnFocus: false }
   );
+
+  /* เพิ่ม: ดึง stores แบบ public เพื่อหา logo/cover */
+  const { data: storesResp } = useSWR<any>(
+    `${API}/stores?limit=500`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  const stores: StoreLite[] = normalizeStores(storesResp);
+
+  /* เพิ่ม: ทำแผนที่ชื่อร้าน (lowercase) -> store */
+  const storeByName = new Map<string, StoreLite>();
+  for (const s of stores) {
+    if (s?.name) storeByName.set(s.name.trim().toLowerCase(), s);
+  }
+
+  /* เพิ่ม: helper หาภาพโลโก้/รูป */
+  const getStoreImage = (storeName?: string) => {
+    if (!storeName) return '';
+    const s = storeByName.get(storeName.trim().toLowerCase());
+    return s?.logo_url || s?.cover_image || '';
+  };
 
   const contacts = (data?.contacts || []).filter((c) => c.is_active);
 
@@ -101,79 +140,114 @@ export default function ContactPage() {
                   ? toEmbedIframeFromUrl(raw)
                   : '';
 
+                /* โลโก้/รูปจาก Stores ตามชื่อร้าน */
+                const img = getStoreImage(c.store_name);
+
                 return (
                   <article
                     key={c.id}
                     className="rounded-xl border border-gray-200 bg-white p-4 md:p-5 shadow-sm ring-1 ring-black/5"
                   >
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {c.store_name || '—'}
-                    </h2>
+                    {/* เส้นหัวการ์ดแบบไล่เฉด */}
+                    <div className="h-[1px] bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-3" />
 
-                    <ul className="mt-2 space-y-1.5 text-[13px] md:text-sm text-gray-700">
-                      {c.phone && <li>📞 {c.phone}</li>}
-                      {c.email && <li>📧 {c.email}</li>}
-                      {c.address && <li>📍 {c.address}</li>}
+                    {/* layout: รายละเอียดซ้าย + โลโก้ขวา */}
+                    <div className="grid grid-cols-[1fr_180px] md:grid-cols-[1fr_220px] gap-4 md:gap-6 items-start">
+                      {/* ซ้าย: ชื่อ + รายละเอียดการติดต่อ */}
+                      <div>
+                        {/* ชื่อร้าน: ทำให้เด่นขึ้นด้วยป้ายสีอ่อน + gradient ตัวอักษรเล็กน้อย */}
+                        <h2 className="text-[17px] md:text-lg font-semibold leading-snug">
+                          <span className="inline-block rounded-md bg-amber-50 px-2 py-1 text-amber-800 ring-1 ring-amber-200">
+                            {c.store_name || '—'}
+                          </span>
+                        </h2>
 
-                      {(c.facebook || c.messenger || c.line) && (
-                        <li className="pt-1.5 flex flex-wrap gap-x-3 gap-y-2">
-                          {c.facebook && (
-                            <a
-                              href={c.facebook}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-600 hover:underline"
-                            >
-                              Facebook
-                            </a>
-                          )}
-                          {c.messenger && (
-                            <a
-                              href={c.messenger}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-600 hover:underline"
-                            >
-                              Messenger
-                            </a>
-                          )}
-                          {c.line && (
-                            <a
-                              href={c.line}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-600 hover:underline"
-                            >
-                              LINE
-                            </a>
-                          )}
-                        </li>
-                      )}
-                    </ul>
+                        <ul className="mt-3 space-y-1.5 text-[13px] md:text-sm text-gray-700">
+                          {c.phone && <li>📞 {c.phone}</li>}
+                          {c.email && <li>📧 {c.email}</li>}
+                          {c.address && <li>📍 {c.address}</li>}
 
-                    {/* Map */}
-                    {(raw || iframeFromUrl) && (
-                      <div className="mt-3 space-y-2">
-                        {!isIframe(raw) && raw && (
-                          <a
-                            href={raw}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
-                          >
-                            เปิดแผนที่
-                          </a>
-                        )}
-                        {(isIframe(raw) || iframeFromUrl) && (
-                          <div
-                            className="overflow-hidden rounded-md border border-gray-200"
-                            dangerouslySetInnerHTML={{
-                              __html: isIframe(raw) ? raw : iframeFromUrl,
-                            }}
-                          />
+                          {(c.facebook || c.messenger || c.line) && (
+                            <li className="pt-1.5 flex flex-wrap gap-x-3 gap-y-2">
+                              {c.facebook && (
+                                <a
+                                  href={c.facebook}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-600 hover:underline"
+                                >
+                                  Facebook
+                                </a>
+                              )}
+                              {c.messenger && (
+                                <a
+                                  href={c.messenger}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-600 hover:underline"
+                                >
+                                  Messenger
+                                </a>
+                              )}
+                              {c.line && (
+                                <a
+                                  href={c.line}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-emerald-600 hover:underline"
+                                >
+                                  LINE
+                                </a>
+                              )}
+                            </li>
+                          )}
+                        </ul>
+
+                        {/* ปุ่มแผนที่ */}
+                        {(raw || iframeFromUrl) && (
+                          <div className="mt-3 space-y-2">
+                            {!isIframe(raw) && raw && (
+                              <a
+                                href={raw}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                              >
+                                เปิดแผนที่
+                              </a>
+                            )}
+                            {/* ถ้าต้องการแสดง iframe ฝังด้วย ให้ปลดคอมเมนต์บล็อกนี้:
+                            {iframeFromUrl && (
+                              <div
+                                className="rounded-lg overflow-hidden border border-gray-100"
+                                dangerouslySetInnerHTML={{ __html: iframeFromUrl }}
+                              />
+                            )} */}
+                          </div>
                         )}
                       </div>
-                    )}
+
+                      {/* ขวา: โลโก้/รูป (กินพื้นที่ว่างด้านขวา) */}
+                      <div className="justify-self-end">
+                        {img ? (
+                          <div className="aspect-[4/3] w-[180px] md:w-[220px] overflow-hidden flex items-center justify-center">
+  <img
+    src={img}
+    alt={c.store_name || 'store'}
+    className="h-full w-full object-contain p-3 md:p-4"
+    loading="lazy"
+  />
+</div>
+                        ) : (
+                          <div className="aspect-[4/3] w-[180px] md:w-[220px] rounded-lg border border-dashed border-gray-200 bg-gray-50/60 flex items-center justify-center text-xs text-gray-400">
+                            ไม่มีโลโก้
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* เส้นท้ายการ์ดแบบไล่เฉด */}
+                    <div className="mt-4 h-[1px] bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                   </article>
                 );
               })}

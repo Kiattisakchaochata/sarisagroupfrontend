@@ -94,6 +94,14 @@ export default async function StoreFeaturedPage({
           const title = img.menu_name ?? store.name;
           const price = typeof img.price === 'number' ? `${img.price} บาท` : '';
 
+          // ✅ ค่าที่ใช้แสดง AVG (รองรับหลายชื่อฟิลด์)
+          const avg =
+            typeof img?.avg_rating === 'number'
+              ? img.avg_rating
+              : typeof img?.avg === 'number'
+              ? img.avg
+              : null;
+
           return (
             <figure
               key={img.id}
@@ -102,14 +110,26 @@ export default async function StoreFeaturedPage({
                 ring-1 ring-gray-200/70 shadow-md hover:shadow-lg transition-shadow
               "
             >
-              {/* รูปเมนู: คงอัตราส่วน 4:3 */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.image_url}
-                alt={img.alt_text ?? title}
-                className="w-full object-cover"
-                style={{ aspectRatio: '4 / 3' }}
-              />
+              {/* รูปเมนู: คงอัตราส่วน 4:3 + ป้าย AVG มุมขวาบน */}
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.image_url}
+                  alt={img.alt_text ?? title}
+                  className="w-full object-cover"
+                  style={{ aspectRatio: '4 / 3' }}
+                />
+
+                {/* ⭐ ป้าย AVG: แสดงได้ทั้งตอน login และไม่ login */}
+                {typeof avg === 'number' && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <div className="flex items-center gap-1 rounded-full bg-black/70 backdrop-blur px-2 py-1 text-xs font-medium text-white shadow">
+                      <span className="text-amber-300">★</span>
+                      <span>{avg.toFixed(1)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* เนื้อหาในการ์ด */}
               <figcaption className="p-3 sm:p-4 flex flex-col">

@@ -1,3 +1,4 @@
+//src/components/ratings/StarRater.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -16,8 +17,9 @@ type Props = {
 
 const jsonFetcher = async (url: string) => {
   const r = await fetch(url, { credentials: 'include' });
-  if (!r.ok) throw new Error(String(r.status));
   const ctype = r.headers.get('content-type') || '';
+  if (r.status === 401) return null;             // ⬅️ ไม่ล็อกอิน: เงียบ ๆ คืน null
+  if (!r.ok) throw new Error(String(r.status));
   if (!ctype.includes('application/json')) throw new Error('Not JSON');
   return r.json();
 };

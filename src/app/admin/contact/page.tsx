@@ -508,14 +508,7 @@ export default function AdminContactsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="font-semibold mb-2 text-slate-900">พรีวิวแผนที่</div>
-                  {iframeHtml ? (
-                    <div className="rounded-lg overflow-hidden border border-slate-200" dangerouslySetInnerHTML={{ __html: iframeHtml }} />
-                  ) : (
-                    <div className="text-sm text-slate-600">ยังไม่มีโค้ด/ลิงก์แผนที่</div>
-                  )}
-                </div>
+                
               </aside>
             </div>
           ) : (
