@@ -1,106 +1,88 @@
-// src/app/events/page.tsx
-'use client';
+import 'server-only';
+import EventsClient from './EventsClient';
+import { buildSeoForPath } from '@/seo/fetchers';
 
-import useSWR from 'swr';
-import Image from 'next/image';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-type Event = {
-  id: string;
-  title: string;
-  cover_image?: string | null;
-  date?: string | null;
-  location?: string | null;
-};
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-function getApiBase() {
-  const raw =
-    process.env.NEXT_PUBLIC_API_BASE ??
-    process.env.NEXT_PUBLIC_API_URL ??
-    '';
-  if (!raw) return '/api';
-  const trimmed = raw.replace(/\/$/, '');
-  return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
-}
-const API_BASE = getApiBase();
-
-const fetcher = async (url: string) => {
-  const res = await fetch(url, { credentials: 'include', headers: { Accept: 'application/json' } });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${text?.slice(0, 200)}`);
-  }
-  return res.json();
-};
-
-export default function EventsPage() {
-  const { data, error, isLoading } = useSWR<{ events: Event[] }>(
-    `${API_BASE}/events?active=1&take=200`,
-    fetcher,
-    { revalidateOnFocus: false }
+// minimal helpers (ตามแพทเทิร์นหน้าอื่น)
+function JsonLd({ data, id }: { data: Record<string, unknown>; id?: string }) {
+  return (
+    <script
+      id={id}
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data, null, 2).replace(/</g, '\\u003c') }}
+    />
   );
-
-  if (isLoading) {
-    return (
-      <section className="container mx-auto max-w-7xl px-4 md:px-6 py-8">
-        <h1 className="text-2xl md:text-3xl font-semibold mb-6">กิจกรรมทั้งหมด</h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-48 rounded-2xl bg-gray-100 animate-pulse" />
-          ))}
-        </div>
-      </section>
-    );
+}
+function collectImages(page: any, site: any): string[] {
+  const a = Array.isArray(page?.jsonld?.image) ? page.jsonld.image : [];
+  const b = Array.isArray(site?.jsonld?.image) ? site.jsonld.image : [];
+  const c = Array.isArray(page?.og_images) ? page.og_images : [];
+  const d = Array.isArray(site?.og_images) ? site.og_images : [];
+  const e = page?.og_image ? [page.og_image] : [];
+  const f = site?.og_image ? [site.og_image] : [];
+  return Array.from(new Set([...a, ...b, ...c, ...d, ...e, ...f].filter(Boolean))).slice(0, 4);
+}
+function mergeJsonLd(site: any, page: any, images: string[]) {
+  const siteObj = site?.jsonld && typeof site.jsonld === 'object' ? site.jsonld : undefined;
+  const pageObj = page?.jsonld && typeof page.jsonld === 'object' ? page.jsonld : undefined;
+  if (pageObj && Array.isArray((pageObj as any)['@graph'])) {
+    const out: any = { '@context': 'https://schema.org', '@graph': (pageObj as any)['@graph'] };
+    if (images.length) out['@graph'] = out['@graph'].map((n: any) => (n?.image ? n : { ...n, image: images }));
+    return out;
   }
+  const out = { ...(siteObj || {}), ...(pageObj || {}) } as Record<string, any>;
+  if (images.length) out.image = images;
+  return out;
+}
 
-  if (error) {
-    return (
-      <section className="container mx-auto max-w-7xl px-4 md:px-6 py-8">
-        <h1 className="text-2xl md:text-3xl font-semibold mb-4">กิจกรรมทั้งหมด</h1>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          ไม่สามารถโหลดข้อมูลกิจกรรมได้ ( {String(error.message)} )
-        </div>
-      </section>
-    );
-  }
+/* ---- SEO metadata ---- */
+export async function generateMetadata() {
+  const path = '/events';
+  const { site, page } = await buildSeoForPath(path);
 
-  const events = data?.events ?? [];
+  const title = (page?.title || site?.meta_title || 'กิจกรรมทั้งหมด | Sarisagroup') as string;
+  const description = (page?.description || site?.meta_description || '') as string;
+  const images = collectImages(page, site).map((url) => ({ url }));
+  const robots = page?.noindex ? ({ index: false, follow: false } as const) : undefined;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, images, url: `${SITE_URL}${path}`, type: 'website' },
+    alternates: { canonical: `${SITE_URL}${path}` },
+    robots,
+    keywords: (site?.keywords ?? '') || undefined,
+  };
+}
+
+/* ---- Page ---- */
+export default async function EventsPage() {
+  const path = '/events';
+  const { site, page } = await buildSeoForPath(path);
+  const images = collectImages(page, site);
+
+  const fallbackJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: page?.title || 'กิจกรรมทั้งหมด',
+    headline: page?.title || 'กิจกรรมทั้งหมด',
+    description: page?.description || site?.meta_description || '',
+    url: `${SITE_URL}${path}`,
+    image: images.length ? images : undefined,
+    isPartOf: { '@type': 'WebSite', url: SITE_URL, name: 'Sarisagroup' },
+  };
+  const jsonld = page?.jsonld && typeof page.jsonld === 'object'
+    ? mergeJsonLd(site, page, images)
+    : fallbackJsonLd;
 
   return (
-    <section className="container mx-auto max-w-7xl px-4 md:px-6 py-8">
-      <h1 className="text-2xl md:text-3xl font-semibold mb-6">กิจกรรมทั้งหมด</h1>
-      {events.length === 0 ? (
-        <div className="text-gray-500">ยังไม่มีกิจกรรม</div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-          {events.map((ev) => (
-            <article
-              key={ev.id}
-              className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition"
-            >
-              <div className="relative aspect-[4/3] bg-gray-100">
-                {ev.cover_image ? (
-                  <Image
-                    src={ev.cover_image}
-                    alt={ev.title}
-                    fill
-                    className="object-cover"
-                    sizes="(min-width:1280px) 25vw, (min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
-                    ไม่มีรูป
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="font-medium text-base line-clamp-2">{ev.title}</h3>
-                {/* ❌ ไม่โชว์วันที่แล้ว */}
-                {ev.location && <p className="text-sm text-gray-500">📍 {ev.location}</p>}
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
+    <>
+      <JsonLd id="ld-events" data={jsonld as any} />
+      <EventsClient />
+    </>
   );
 }

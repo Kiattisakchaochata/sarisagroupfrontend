@@ -6,9 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/ui/ToastProvider';
 import { ReactNode, useMemo, useState, useEffect, useRef } from 'react';
 
-type AdminShellProps = {
-  children: ReactNode;
-};
+type AdminShellProps = { children: ReactNode };
 
 export default function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
@@ -16,31 +14,31 @@ export default function AdminShell({ children }: AdminShellProps) {
   const { logout } = useAuth();
   const { success, error } = useToast();
 
-  // รายการเมนู
   const NAV = useMemo(
     () => [
-      { href: '/admin',                         label: 'Dashboard', match: (p: string) => p === '/admin' },
-      { href: '/admin/stores',                  label: 'Stores',    match: (p: string) => p.startsWith('/admin/stores') },
-      { href: '/admin/homepage/missions',       label: 'Missions',  match: (p: string) => p.startsWith('/admin/homepage/missions') },
-      { href: '/admin/homepage/featured',       label: 'Featured',  match: (p: string) => p.startsWith('/admin/homepage/featured') },
-      { href: '/admin/homepage/logos',          label: 'Logos',     match: (p: string) => p.startsWith('/admin/homepage/logos') },
-      { href: '/admin/videos',                  label: 'Videos',    match: (p: string) => p.startsWith('/admin/videos') },
-      { href: '/admin/events',                  label: 'Events',    match: (p: string) => p.startsWith('/admin/events') },
-      { href: '/admin/seo',                     label: 'SEO',       match: (p: string) => p.startsWith('/admin/seo') },
-      { href: '/admin/footer',                  label: 'Footer',    match: (p: string) => p.startsWith('/admin/footer') },
-      { href: '/admin/tracking',                label: 'Tracking',  match: (p: string) => p.startsWith('/admin/tracking') },
+      { href: '/admin', label: 'Dashboard', match: (p: string) => p === '/admin' },
+      { href: '/admin/stores', label: 'Stores', match: (p: string) => p.startsWith('/admin/stores') },
+      { href: '/admin/homepage/missions', label: 'Missions', match: (p: string) => p.startsWith('/admin/homepage/missions') },
+      { href: '/admin/homepage/featured', label: 'Featured', match: (p: string) => p.startsWith('/admin/homepage/featured') },
+      { href: '/admin/homepage/logos', label: 'Logos', match: (p: string) => p.startsWith('/admin/homepage/logos') },
+      { href: '/admin/videos', label: 'Videos', match: (p: string) => p.startsWith('/admin/videos') },
+      { href: '/admin/events', label: 'Events', match: (p: string) => p.startsWith('/admin/events') },
+      { href: '/admin/seo', label: 'SEO', match: (p: string) => p.startsWith('/admin/seo') },
+
+      // ✅ เพิ่มเมนู Branding
+      { href: '/admin/brand', label: 'Branding', match: (p: string) => p.startsWith('/admin/brand') },
+
+      { href: '/admin/footer', label: 'Footer', match: (p: string) => p.startsWith('/admin/footer') },
+      { href: '/admin/tracking', label: 'Tracking', match: (p: string) => p.startsWith('/admin/tracking') },
       { href: '/admin/contact', label: 'Contact', match: (p: string) => p.startsWith('/admin/contact') },
     ],
     []
   );
 
-  // mobile
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -53,12 +51,9 @@ export default function AdminShell({ children }: AdminShellProps) {
 
   const onLogout = async () => {
     const to = '/';
-    try {
-      await logout();
-      success('ออกจากระบบสำเร็จ');
-    } catch {
-      error('ออกจากระบบไม่สำเร็จ แต่จะพากลับหน้าแรกให้');
-    } finally {
+    try { await logout(); success('ออกจากระบบสำเร็จ'); }
+    catch { error('ออกจากระบบไม่สำเร็จ แต่จะพากลับหน้าแรกให้'); }
+    finally {
       try { localStorage.removeItem('sg_token'); } catch {}
       router.replace(to);
       router.refresh();
@@ -72,14 +67,14 @@ export default function AdminShell({ children }: AdminShellProps) {
 
   return (
     <div className="min-h-screen bg-[#0f1623] text-white">
-      {/* Top bar */}
       <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0b1220]/80 backdrop-blur supports-[backdrop-filter]:bg-[#0b1220]/60">
         <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6">
           <div className="flex h-14 items-center gap-2">
-            {/* ไม่มีโลโก้/ชื่อ Panel เพื่อความกะทัดรัด */}
-
-            {/* Desktop nav */}
-            <nav className="hidden md:flex flex-1 items-center gap-1 overflow-x-auto">
+            {/* ใส่ id เพื่อช่วยตรวจด้วย DevTools ได้ */}
+            <nav
+              id="admin-nav-marker-real"
+              className="hidden md:flex flex-1 flex-wrap items-center gap-1"
+            >
               {NAV.map((item) => {
                 const active = item.match(pathname || '');
                 return (
@@ -87,13 +82,11 @@ export default function AdminShell({ children }: AdminShellProps) {
                     key={item.href}
                     href={item.href}
                     data-active={active}
-                    className={[
-                      'relative group rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors',
-                      'text-slate-300 hover:text-white hover:bg-white/5',
-                      'data-[active=true]:text-white data-[active=true]:bg-white/10',
-                      // เส้นชี้ active ด้านล่าง
-                      'after:absolute after:left-2 after:right-2 after:-bottom-[10px] after:h-[2px] after:rounded-full after:bg-white/50 after:opacity-0 data-[active=true]:after:opacity-100',
-                    ].join(' ')}
+                    className="relative group rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors whitespace-nowrap
+                               text-slate-300 hover:text-white hover:bg-white/5
+                               data-[active=true]:text-white data-[active=true]:bg-white/10
+                               after:absolute after:left-2 after:right-2 after:-bottom-[10px] after:h-[2px] after:rounded-full after:bg-white/50
+                               after:opacity-0 data-[active=true]:after:opacity-100"
                   >
                     {item.label}
                   </Link>
@@ -101,7 +94,6 @@ export default function AdminShell({ children }: AdminShellProps) {
               })}
             </nav>
 
-            {/* ปุ่ม Logout (desktop) */}
             <button
               type="button"
               onClick={onLogout}
@@ -110,7 +102,6 @@ export default function AdminShell({ children }: AdminShellProps) {
               ออกจากระบบ
             </button>
 
-            {/* Hamburger (mobile) */}
             <button
               type="button"
               aria-label="เปิดเมนู"
@@ -128,7 +119,6 @@ export default function AdminShell({ children }: AdminShellProps) {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {open && (
           <div ref={menuRef} className="md:hidden border-t border-white/10">
             <nav className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-2 flex flex-col">
@@ -140,11 +130,9 @@ export default function AdminShell({ children }: AdminShellProps) {
                       key={item.href}
                       href={item.href}
                       data-active={active}
-                      className={[
-                        'rounded-lg px-3 py-2 text-[15px] font-medium transition-colors',
-                        'text-slate-200 hover:text-white hover:bg-white/5',
-                        'data-[active=true]:text-white data-[active=true]:bg-white/10',
-                      ].join(' ')}
+                      className="shrink-0 rounded-lg px-3 py-2 text-[15px] font-medium transition-colors
+                                 text-slate-200 hover:text-white hover:bg-white/5
+                                 data-[active=true]:text-white data-[active=true]:bg-white/10"
                     >
                       {item.label}
                     </Link>
@@ -164,7 +152,6 @@ export default function AdminShell({ children }: AdminShellProps) {
         )}
       </header>
 
-      {/* Page body */}
       <main className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-8">{children}</main>
     </div>
   );

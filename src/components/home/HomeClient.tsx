@@ -1,15 +1,26 @@
-// src/app/.../HomeClient.tsx
 'use client';
-import useSWR from 'swr';
+
 import { useEffect, useState } from 'react';
+import useSWR from 'swr';
+import dynamic from 'next/dynamic';
+
 import ImpactStrip from '@/components/ImpactStrip';
-import VideoGallery from '@/components/VideoGallery';
-import EventsSwiper, { type EventCard } from '@/components/swipers/EventsSwiper';
 import StoresLogoWall from '@/components/StoresLogoWall';
+import FeaturedGrid, { type FeaturedItem } from '@/components/home/FeaturedGrid';
 import { useHomepage } from '@/hooks/useHomepage';
 import { apiFetch } from '@/lib/api';
-import FeaturedGrid, { type FeaturedItem } from '@/components/home/FeaturedGrid';
+import type { EventCard } from '@/components/swipers/EventsSwiper';
 
+// ✅ โหลดฝั่ง client เท่านั้น เพื่อกัน SSR/hydration mismatch ในคอมโพเนนต์ลูก
+const VideoGallery = dynamic(() => import('@/components/VideoGallery'), { ssr: false });
+const EventsSwiper  = dynamic(() => import('@/components/swipers/EventsSwiper'), { ssr: false });
+
+/** ให้ลูก render หลัง mount (เลี่ยง hydration แตกถ้าลูกมี hooks แปลก) */
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted ? <>{children}</> : null;
+}
 
 type FeaturedItemWithOrder = FeaturedItem & { featured_order?: number | null };
 type FeaturedGroup = {
@@ -23,6 +34,7 @@ type FeaturedGroup = {
 const PER_STORE_MAX = 10;
 
 export default function HomeClient() {
+  // ⬇️ hooks ทั้งหมด “เรียกทุกครั้ง” ไม่มีเงื่อนไข → ลำดับคงที่
   const { data: home } = useHomepage();
   const [groups, setGroups] = useState<FeaturedGroup[]>([]);
 
@@ -63,7 +75,7 @@ export default function HomeClient() {
   const rowEvents = rowOf('events');
   const rowNetwork = rowOf('network');
 
-  // ---------- ✨ map โลโก้จาก BE + fallback ----------
+  // โลโก้เครือ
   const logoItems =
     Array.isArray(home?.storesMini) && home!.storesMini.length > 0
       ? home!.storesMini.map((s: any) => ({
@@ -79,24 +91,16 @@ export default function HomeClient() {
           { id: 'mock-3', name: 'SARISA SALON', slug: 'sarisa-salon', logo_url: '/images/mock/brand-c.png', contain: true },
           { id: 'mock-4', name: 'ครัวคุณ…', slug: 'krua', logo_url: '/images/mock/brand-d.png', contain: true },
         ];
-  // ----------------------------------------------------
 
-  // ---------- 🗓️ Events จาก API (มี fallback เล็กน้อย) ----------
+  // Events (hook นี้เรียกทุกครั้ง ไม่อยู่ใน if)
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
-
   const { data: eventsData } = useSWR<{ events: EventCard[] }>(
     `${API_BASE}/api/events?active=1&take=12`,
     async (url: string) => {
       const res = await fetch(url, { credentials: 'include' });
       const ctype = res.headers.get('content-type') || '';
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
-      }
-      if (!ctype.includes('application/json')) {
-        const text = await res.text();
-        throw new Error(`Expected JSON but got: ${text.slice(0, 120)}…`);
-      }
+      if (!res.ok) throw new Error(`API ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      if (!ctype.includes('application/json')) throw new Error('Expected JSON');
       return res.json();
     },
     { revalidateOnFocus: false }
@@ -109,7 +113,6 @@ export default function HomeClient() {
         { id: 'e2', title: 'Workshop ล้างรถรักษ์โลก', cover_image: '/images/mock/event-2.jpg', date: '2025-09-15', location: 'มหาสารคาม' },
         { id: 'e3', title: 'เวิร์กช็อปชุมชน', cover_image: '/images/mock/event-3.jpg', date: '2025-10-12', location: 'กาฬสินธุ์' },
       ];
-  // ----------------------------------------------------
 
   return (
     <main className="container mx-auto max-w-7xl px-4 md:px-6 space-y-12 md:space-y-16">
@@ -135,43 +138,47 @@ export default function HomeClient() {
 
       {/* รูปเด่นต่อร้าน */}
       {groups.map((g) => (
-  <FeaturedGrid
-    key={g.store_id}
-    items={g.items}
-    title={g.store_name}
-    // เดิม: hrefAll={`/stores/byslug/${g.store_slug}/featured`}
-    hrefAll={`/stores/${g.store_id}/featured`}   // ✅ ใช้ id ตรง ๆ
-    cardWidth={400}
-    cardHeight={450}
-    maxItems={PER_STORE_MAX}
-    gapPx={16}
-  />
-))}
+        <FeaturedGrid
+          key={g.store_id}
+          items={g.items}
+          title={g.store_name}
+          hrefAll={`/stores/${g.store_id}/featured`}
+          cardWidth={400}
+          cardHeight={450}
+          maxItems={PER_STORE_MAX}
+          gapPx={16}
+        />
+      ))}
 
       <ImpactStrip />
 
-      {/* โลโก้ร้านในเครือ */}
+      {/* โลโก้เครือ */}
       <StoresLogoWall items={logoItems} title={rowNetwork?.title ?? 'ร้านในเครือของเรา'} />
 
-      {/* วิดีโอ/กิจกรรม */}
+      {/* วิดีโอ */}
       <section>
         <div className="section-header">
           <h2 className="section-title">{rowVideos?.title ?? 'วิดีโอรีวิว'}</h2>
           <a href={rowVideos?.ctaHref ?? '/videos/reviews'} className="link-pill">
-  {rowVideos?.ctaText ?? 'ดูทั้งหมด'}
-</a>
+            {rowVideos?.ctaText ?? 'ดูทั้งหมด'}
+          </a>
         </div>
-        <VideoGallery />
+        <ClientOnly>
+          <VideoGallery />
+        </ClientOnly>
       </section>
 
+      {/* กิจกรรม */}
       <section>
         <div className="section-header">
           <h2 className="section-title">{rowEvents?.title ?? 'กิจกรรม'}</h2>
           <a href={rowEvents?.ctaHref ?? '/events'} className="link-pill">
-  {rowEvents?.ctaText ?? 'ดูทั้งหมด'}
-</a>
+            {rowEvents?.ctaText ?? 'ดูทั้งหมด'}
+          </a>
         </div>
-        <EventsSwiper items={events} />
+        <ClientOnly>
+          <EventsSwiper items={events} />
+        </ClientOnly>
       </section>
     </main>
   );

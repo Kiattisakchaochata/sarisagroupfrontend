@@ -2,12 +2,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,   // ✅ ให้ build ผ่านแม้เจอ lint error
-  },
-  typescript: {
-    ignoreBuildErrors: true,    // ✅ ให้ build ผ่านแม้เจอ type error
-  },
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
@@ -17,6 +13,13 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'scontent.xx.fbcdn.net' },
       { protocol: 'https', hostname: 'cdn.tiktokcdn.com' },
     ],
+  },
+  compiler: {
+    // ลบ console ตอน production (เหลือเฉพาะ error/warn)
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false,
   },
 };
 

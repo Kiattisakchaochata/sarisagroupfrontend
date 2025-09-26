@@ -1,43 +1,77 @@
-'use client';
+// src/app/stores/page.tsx
+import 'server-only';
+import StoresClient from './StoresClient';
+import { buildSeoForPath } from '@/seo/fetchers';
 
-import useSWR from 'swr'
-import { swrFetcher } from '@/lib/swrFetcher'
-import StoreCard from '@/components/StoreCard'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-type Store = {
-  id: string
-  slug?: string | null
-  name: string
-  description?: string
-  cover_image?: string | null
-  category?: { name: string }
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+type PageProps = {};
+
+// ---- JSON-LD helper ----
+function JsonLd({ data, id }: { data: Record<string, unknown>; id?: string }) {
+  return (
+    <script
+      id={id}
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(data, null, 2).replace(/</g, '\\u003c'),
+      }}
+    />
+  );
 }
 
-export default function StoresPage() {
-  const { data, error, isLoading } = useSWR<{ stores: Store[] }>(
-    '/api/stores',
-    swrFetcher
-  )
+// ---- Metadata ----
+export async function generateMetadata(_: PageProps) {
+  const path = `/stores`;
+  const { site, page } = await buildSeoForPath(path);
+
+  const title = (page?.title || site?.meta_title || 'ร้านทั้งหมด | Sarisagroup') as string;
+  const description = (page?.description || site?.meta_description || '') as string;
+  const images = [
+    ...(Array.isArray(page?.og_images) ? page.og_images : []),
+    ...(page?.og_image ? [page.og_image] : []),
+    ...(site?.og_image ? [site.og_image] : []),
+  ].filter(Boolean);
+
+  const robots = page?.noindex ? ({ index: false, follow: false } as const) : undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: images.map((url) => ({ url })),
+      url: `${SITE_URL}${path}`,
+      type: 'website',
+    },
+    alternates: { canonical: `${SITE_URL}${path}` },
+    robots,
+    keywords: site?.keywords || undefined,
+  };
+}
+
+// ---- Page ----
+export default async function StoresPage() {
+  const path = `/stores`;
+  const { site, page } = await buildSeoForPath(path);
+
+  const jsonld = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: page?.title || site?.meta_title || 'ร้านทั้งหมด',
+    description: page?.description || site?.meta_description || '',
+    url: `${SITE_URL}${path}`,
+    isPartOf: { '@type': 'WebSite', url: SITE_URL, name: 'Sarisagroup' },
+  };
 
   return (
-    <main className="container mx-auto max-w-6xl px-4 md:px-6 py-10">
-      <h1 className="text-2xl font-semibold mb-6">ร้านทั้งหมด</h1>
-
-      {isLoading && <p>กำลังโหลด...</p>}
-      {error && <p className="text-error">โหลดข้อมูลล้มเหลว</p>}
-
-      {data?.stores?.length ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.stores.map((s) => {
-            const href = s.slug
-              ? `/stores/byslug/${encodeURIComponent(s.slug)}`
-              : `/stores/${encodeURIComponent(s.id)}`
-            return <StoreCard key={s.id} store={s} href={href} />
-          })}
-        </div>
-      ) : (
-        !isLoading && <p>ยังไม่มีร้าน</p>
-      )}
-    </main>
-  )
+    <>
+      <JsonLd id="ld-stores" data={jsonld} />
+      <StoresClient />
+    </>
+  );
 }

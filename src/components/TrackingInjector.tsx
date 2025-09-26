@@ -43,44 +43,6 @@ async function fetchEnabled(): Promise<TrackingScript[]> {
   }
 }
 
-/** วางใน <head> ของ layout */
-export async function TrackingInjectorHead() {
-  const scripts = (await fetchEnabled()).filter((s) => s.placement === 'HEAD');
-  if (scripts.length === 0) return null;
-
-  return (
-    <>
-      {scripts.map((s) => (
-        <Script
-          key={s.id}
-          id={`trk-${s.id}`}
-          strategy={normalizeStrategy(s.strategy)}
-          dangerouslySetInnerHTML={{ __html: buildInline(s) }}
-        />
-      ))}
-    </>
-  );
-}
-
-/** วางท้าย <body> ของ layout */
-export async function TrackingInjectorBody() {
-  const scripts = (await fetchEnabled()).filter((s) => s.placement === 'BODY_END');
-  if (scripts.length === 0) return null;
-
-  return (
-    <>
-      {scripts.map((s) => (
-        <Script
-          key={s.id}
-          id={`trk-${s.id}`}
-          strategy={normalizeStrategy(s.strategy)}
-          dangerouslySetInnerHTML={{ __html: buildInline(s) }}
-        />
-      ))}
-    </>
-  );
-}
-
 function normalizeStrategy(s: Strategy): 'afterInteractive' | 'lazyOnload' | 'worker' {
   return s === 'lazyOnload' ? 'lazyOnload' : s === 'worker' ? 'worker' : 'afterInteractive';
 }
@@ -137,4 +99,73 @@ function buildInline(s: TrackingScript): string {
   }
 
   return s.script || '';
+}
+
+/** วางใน <head> ของ layout */
+export async function TrackingInjectorHead() {
+  const scripts = (await fetchEnabled()).filter((s) => s.placement === 'HEAD');
+  if (scripts.length === 0) return null;
+
+  return (
+    <>
+      {scripts.map((s) => (
+        <Script
+          key={s.id}
+          id={`trk-${s.id}`}
+          strategy={normalizeStrategy(s.strategy)}
+          dangerouslySetInnerHTML={{ __html: buildInline(s) }}
+        />
+      ))}
+    </>
+  );
+}
+
+/** วางท้าย <body> ของ layout + noscript (GTM/FB) */
+export async function TrackingInjectorBody() {
+  const all = await fetchEnabled();
+  const scripts = all.filter((s) => s.placement === 'BODY_END');
+  if (scripts.length === 0 && all.length === 0) return null;
+
+  return (
+    <>
+      {scripts.map((s) => (
+        <Script
+          key={s.id}
+          id={`trk-${s.id}`}
+          strategy={normalizeStrategy(s.strategy)}
+          dangerouslySetInnerHTML={{ __html: buildInline(s) }}
+        />
+      ))}
+
+      {/* noscript สำหรับ GTM / Facebook Pixel */}
+      {all.map((s) => {
+        if (s.provider === 'GTM' && s.trackingId) {
+          return (
+            <noscript key={`ns-gtm-${s.id}`}>
+              <iframe
+                src={`https://www.googletagmanager.com/ns.html?id=${s.trackingId}`}
+                height="0"
+                width="0"
+                style={{ display: 'none', visibility: 'hidden' }}
+              />
+            </noscript>
+          );
+        }
+        if (s.provider === 'FacebookPixel' && s.trackingId) {
+          return (
+            <noscript key={`ns-fb-${s.id}`}>
+              <img
+                height="1"
+                width="1"
+                style={{ display: 'none' }}
+                src={`https://www.facebook.com/tr?id=${s.trackingId}&ev=PageView&noscript=1`}
+                alt=""
+              />
+            </noscript>
+          );
+        }
+        return null;
+      })}
+    </>
+  );
 }

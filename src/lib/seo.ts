@@ -1,76 +1,108 @@
-// ใช้เฉพาะฝั่ง server เท่านั้น
 import 'server-only';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, '') || 'http://localhost:8877';
+function getApiBase() {
+  const raw =
+    process.env.NEXT_PUBLIC_API_BASE ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:8877';
+  const trimmed = raw.replace(/\/$/, '');
+  return /\/api$/.test(trimmed) ? trimmed : `${trimmed}/api`;
+}
+const API_BASE = getApiBase();
 
-// ดึง Global SEO
+export function normPath(p?: string) {
+  if (!p) return '/';
+  let s = String(p).trim();
+  if (!s.startsWith('/')) s = '/' + s;
+  if (s.length > 1) s = s.replace(/\/+$/, '');
+  return s;
+}
+
+function withTimeout(ms: number) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return { signal: ctrl.signal, clear: () => clearTimeout(id) };
+}
+
+// ✅ ใช้ revalidate (แคชได้) + timeout กันค้าง
+async function safeFetchJSON<T = any>(url: string, timeoutMs = 1500): Promise<Partial<T>> {
+  const t = withTimeout(timeoutMs);
+  try {
+    const res = await fetch(url, {
+      // ❌ cache: 'no-store',
+      next: { revalidate: 300 }, // ✅ แคช 5 นาที (ปรับได้)
+      signal: t.signal,
+    });
+    if (!res.ok) return {};
+    return (await res.json()) as T;
+  } catch (e) {
+    console.error('[SEO] fetch failed:', url, String(e));
+    return {};
+  } finally {
+    t.clear();
+  }
+}
+
 export async function fetchSiteSeo() {
-  const res = await fetch(`${API_BASE}/api/admin/seo/site`, { // ถ้าคุณมี public endpoint ให้สลับมาใช้ public ได้
-    // ถ้ามี public endpoint แนะนำเปลี่ยนเป็น /api/seo/site (ไม่ต้องส่ง cookie)
-    cache: 'no-store',
-    // credentials/cookies: ถ้าหลังบ้านล็อกอินเท่านั้น ให้ทำ public endpoint สำหรับอ่านแทน
-  });
-  if (!res.ok) return {};
-  return res.json(); // { meta_title, meta_description, keywords, og_image, jsonld }
+  return safeFetchJSON(`${API_BASE}/admin/seo/site`);
 }
 
-// ดึง Page SEO จาก path
 export async function fetchPageSeo(path: string) {
-  const res = await fetch(`${API_BASE}/api/admin/seo/page?path=${encodeURIComponent(path)}`, {
-    cache: 'no-store',
-  });
-  if (!res.ok) return {};
-  return res.json(); // { path, title, description, og_image, noindex, jsonld }
+  const p = normPath(path);
+  return safeFetchJSON(`${API_BASE}/admin/seo/page?path=${encodeURIComponent(p)}`);
 }
 
-// รวมค่า + สร้าง metadata fields สำหรับ Next
+function collectImages(page: any, site: any): string[] {
+  const a = Array.isArray(page?.jsonld?.image) ? page.jsonld.image : [];
+  const b = Array.isArray(site?.jsonld?.image) ? site.jsonld.image : [];
+  const c = Array.isArray(page?.og_images) ? page.og_images : [];
+  const d = Array.isArray(site?.og_images) ? site.og_images : [];
+  const e = page?.og_image ? [page.og_image] : [];
+  const f = site?.og_image ? [site.og_image] : [];
+  const all = [...a, ...b, ...c, ...d, ...e, ...f].filter(Boolean) as string[];
+  return Array.from(new Set(all)).slice(0, 4);
+}
+
+function mergeJsonLd(site: any, page: any, images: string[]) {
+  const siteObj = site?.jsonld && typeof site.jsonld === 'object' ? site.jsonld : undefined;
+  const pageObj = page?.jsonld && typeof page.jsonld === 'object' ? page.jsonld : undefined;
+
+  if (pageObj && Array.isArray((pageObj as any)['@graph'])) {
+    const out: any = { '@context': 'https://schema.org', '@graph': (pageObj as any)['@graph'] };
+    if (images.length) {
+      out['@graph'] = out['@graph'].map((n: any) => {
+        const node = { ...n };
+        if (
+          node &&
+          (node['@type'] === 'WebPage' ||
+            node['@type'] === 'Article' ||
+            node['@type'] === 'Product' ||
+            node['@type'] === 'Organization')
+        ) {
+          node.image = node.image ?? images;
+        }
+        return node;
+      });
+    }
+    return out;
+  }
+
+  const out = { ...(siteObj || {}), ...(pageObj || {}) } as Record<string, any>;
+  if (images.length) out.image = images;
+  return out;
+}
+
 export async function buildSeoForPath(pathname: string) {
-  const [site, page] = await Promise.all([
-    fetchSiteSeo(),
-    fetchPageSeo(pathname),
-  ]);
+  const brand = process.env.NEXT_PUBLIC_BRAND_NAME || 'Sarisagroup';
+  const p = normPath(pathname);
+  const [site, page] = await Promise.all([fetchSiteSeo(), fetchPageSeo(p)]);
 
-  // title/description
-  const title = (page?.title || site?.meta_title || '') as string;
+  const title = (page?.title || site?.meta_title || brand) as string;
   const description = (page?.description || site?.meta_description || '') as string;
+  const images = collectImages(page, site);
+  const keywords = (site?.keywords ?? '') as string;
+  const robots = page?.noindex ? ({ index: false, follow: false } as const) : undefined;
+  const jsonld = mergeJsonLd(site, page, images);
 
-  // images: เอา 4 รูปจาก page ก่อน ถ้าไม่มีใช้ของ global
-  const fromPage = Array.isArray(page?.jsonld?.image) ? page.jsonld.image : [];
-  const fromSite = Array.isArray(site?.jsonld?.image) ? site.jsonld.image : [];
-  const images: string[] = [
-    ...(fromPage as string[]),
-    ...(fromSite as string[]),
-    page?.og_image,
-    site?.og_image,
-  ].filter(Boolean) as string[];
-  const uniqImages = Array.from(new Set(images)).slice(0, 4);
-
-  // keywords (จาก global)
-  const keywords = (site?.keywords || '')
-    .split(',')
-    .map((s: string) => s.trim())
-    .filter(Boolean);
-
-  // noindex ถ้าหน้านั้นติ๊กไว้
-  const robots = page?.noindex ? { index: false, follow: false } : undefined;
-
-  // JSON-LD: รวมแบบชัดเจน
-  const jsonldSite = (site?.jsonld && typeof site.jsonld === 'object') ? site.jsonld : {};
-  const jsonldPage = (page?.jsonld && typeof page.jsonld === 'object') ? page.jsonld : {};
-
-  // บังคับให้มี image[] ที่รวมกันแล้ว
-  const mergedJsonLd = {
-    ...(jsonldSite || {}),
-    ...(jsonldPage || {}),
-    image: uniqImages,
-  };
-
-  return {
-    title,
-    description,
-    keywords,
-    robots,
-    images: uniqImages,
-    jsonld: mergedJsonLd,
-  };
+  return { title, description, keywords, robots, images, jsonld };
 }

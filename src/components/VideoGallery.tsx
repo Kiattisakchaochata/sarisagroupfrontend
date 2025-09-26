@@ -1,3 +1,4 @@
+// src/components/VideoGallery.tsx
 'use client';
 
 import useSWR from 'swr';
@@ -35,7 +36,7 @@ export default function VideoGallery({
   headerTitle = 'วิดีโอรีวิว',
   allHref = '/videos',
 }: { showHeader?: boolean; headerTitle?: string; allHref?: string }) {
-
+  // ⬇️ hooks ต้องอยู่ top-level เสมอ
   const { data, error, isLoading } = useSWR<{ videos: Video[]; total: number }>(
     '/api/videos?active=1&take=24',
     swrFetcher
@@ -43,11 +44,9 @@ export default function VideoGallery({
   const videos = data?.videos ?? [];
   const bp = useBreakpoint();
 
-  // คอลัมน์ต่อหน้า: 2/3/4, แถวคงที่ 2  -> 4 / 6 / 8 ใบ/หน้า
   const cols = bp === 'xl' ? 4 : bp === 'md' ? 3 : 2;
   const pageSize = cols * 2;
 
-  // แบ่งหน้า (array ของ array)
   const pagesData = useMemo(() => {
     const out: Video[][] = [];
     for (let i = 0; i < videos.length; i += pageSize) {
@@ -55,17 +54,13 @@ export default function VideoGallery({
     }
     return out;
   }, [videos, pageSize]);
-  const pages = Math.max(1, pagesData.length);
 
+  const pages = Math.max(1, pagesData.length);
   const [page, setPage] = useState(0);
   useEffect(() => setPage(0), [pageSize, videos.length]);
 
-  if (error) return null;
-
-  // ===== Native scroll + snap =====
+  // ✅ hooks ที่เกี่ยวกับ scroll ต้องมาก่อนเงื่อนไข return
   const viewportRef = useRef<HTMLDivElement | null>(null);
-
-  // อัปเดตหน้าปัจจุบันระหว่างเลื่อน (ใช้ rAF กันการคำนวณถี่เกิน)
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -87,7 +82,9 @@ export default function VideoGallery({
     const target = Math.max(0, Math.min(p, pages - 1));
     el.scrollTo({ left: target * el.clientWidth, behavior: 'smooth' });
   };
-  // =================================
+
+  // ❗️หลังจากประกาศ hooks ครบแล้ว ค่อย early-return ได้
+  if (error) return null;
 
   return (
     <section className="mt-6 relative">
@@ -106,19 +103,13 @@ export default function VideoGallery({
         </div>
       ) : (
         <div className="relative">
-    
-
-          {/* Viewport ที่เลื่อนตามนิ้ว/เมาส์ได้ลื่น (มี inertia) */}
           <div
             ref={viewportRef}
             className="overflow-x-auto overflow-y-hidden scroll-smooth snap-x snap-mandatory touch-pan-x select-none no-scrollbar"
           >
             <div className="flex">
               {pagesData.map((pageItems, idx) => (
-                <div
-                  key={idx}
-                  className="snap-center shrink-0 w-full px-0"
-                >
+                <div key={idx} className="snap-center shrink-0 w-full px-0">
                   <div className="grid gap-6 grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                     {pageItems.map((v) => (
                       <a
@@ -156,11 +147,9 @@ export default function VideoGallery({
                           )}
                         </div>
                         <div className="flex-1 p-3 flex flex-col">
-                          <h3
-  className="text-sm font-medium leading-5 line-clamp-2 overflow-hidden text-ellipsis"
->
-  {v.title}
-</h3>
+                          <h3 className="text-sm font-medium leading-5 line-clamp-2 overflow-hidden text-ellipsis">
+                            {v.title}
+                          </h3>
                         </div>
                       </a>
                     ))}
@@ -170,7 +159,6 @@ export default function VideoGallery({
             </div>
           </div>
 
-          {/* bullets */}
           {pages > 1 && (
             <div className="mt-4 flex justify-center gap-2">
               {Array.from({ length: pages }).map((_, i) => (
@@ -190,7 +178,6 @@ export default function VideoGallery({
         </div>
       )}
 
-      {/* ซ่อนสกอร์บาร์แนวนอน (ถ้าใช้ Tailwind เพิ่มยูทิลิตี้นี้ไว้ใน globals ก็ได้) */}
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

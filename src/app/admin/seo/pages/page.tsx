@@ -1,4 +1,3 @@
-// src/app/admin/seo/pages/page.tsx
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -39,10 +38,7 @@ export default function AdminSeoPagesPage() {
 
   const startNew = () => setEditing({ path: '' });
 
-  /**
-   * บันทึก: ใช้ POST เสมอ (ฝั่ง BE ทำ upsert)
-   * return true = สำเร็จ, throw Error = ล้มเหลว
-   */
+  // บันทึก (upsert)
   const onSave = async (payload: {
     id?: string;
     path: string;
@@ -59,7 +55,7 @@ export default function AdminSeoPagesPage() {
     try {
       const body = {
         id: payload.id,
-        path: payload.path,
+        path: normPath(payload.path),
         title: payload.title ?? '',
         description: payload.description ?? '',
         og_image: payload.og_image ?? '',
@@ -68,12 +64,12 @@ export default function AdminSeoPagesPage() {
       };
 
       await apiFetch('/admin/seo/page', {
-        method: 'POST',
+        method: 'POST', // BE รองรับ PUT/POST/PATCH แล้ว
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
-      await refresh(); // อัปเดตตาราง
+      await refresh();
       return true;
     } catch (e: any) {
       throw new Error(e?.message || 'บันทึกไม่สำเร็จ');
@@ -187,7 +183,16 @@ export default function AdminSeoPagesPage() {
   );
 }
 
-/* ---------- Modal (อัปโหลด OG 4 ช่อง + เติม JSON-LD ให้ครบก่อนบันทึก) ---------- */
+// ทำ path ให้มาตรฐาน: มี / นำหน้า และไม่มี / ท้าย (ยกเว้นหน้า /)
+function normPath(p: string) {
+  if (!p) return '/';
+  let s = String(p).trim();
+  if (!s.startsWith('/')) s = '/' + s;
+  if (s.length > 1) s = s.replace(/\/+$/, '');
+  return s;
+}
+
+/* ---------- Modal ---------- */
 function EditModal({
   editing,
   setEditing,
@@ -211,7 +216,6 @@ function EditModal({
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // ฟอร์มหลัก
   const [form, setForm] = useState({
     path: editing.path ?? '',
     title: editing.title ?? '',
@@ -220,11 +224,9 @@ function EditModal({
     jsonld: editing.jsonld ?? {},
   });
 
-  // รูป 4 ช่อง (controlled + padding)
   const [ogList, setOgList] = useState<string[]>(['', '', '', '']);
   const [btnLoading, setBtnLoading] = useState(false);
 
-  // preload ทุกครั้งที่ editing เปลี่ยน (กดแก้ไข)
   useEffect(() => {
     const fromJson = Array.isArray((editing as any)?.jsonld?.image)
       ? ((editing as any).jsonld.image as string[])
@@ -245,31 +247,25 @@ function EditModal({
     const primary = ogList.find(Boolean) || editing.og_image || '';
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
-    // เริ่มจาก jsonld เดิม (ถ้ามี)
     const merged: any = (typeof form.jsonld === 'object' && form.jsonld) ? { ...form.jsonld } : {};
-
-    // อัปเดตรูปให้เป็น image[]
     merged.image = ogList.filter(Boolean);
 
-    // ⬇ เติมค่า default JSON-LD ให้ครบ ถ้ายังไม่มี (ให้หน้าเพจมีโครงสร้างเหมือน Global)
     if (!merged['@context']) merged['@context'] = 'https://schema.org';
     if (!merged['@type'])    merged['@type']    = 'WebPage';
-    if (!merged.url)         merged.url         = `${siteUrl}${form.path?.startsWith('/') ? form.path : `/${form.path || ''}`}`;
+    if (!merged.url) {
+      const p = normPath(form.path);
+      merged.url = `${siteUrl}${p}`;
+    }
     if (!merged.name)        merged.name        = form.title || 'Sarisagroup';
     if (!merged.description) merged.description = form.description || '';
 
     setBtnLoading(true);
 
-    // โชว์ popup ระหว่างบันทึก
-    Swal.fire({
-      title: 'กำลังบันทึก…',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-    });
+    Swal.fire({ title: 'กำลังบันทึก…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
       const ok = await onSave({
-        id: editing.id, // มีค่าเมื่อแก้ไข
+        id: editing.id,
         path: form.path,
         title: form.title,
         description: form.description,
@@ -281,21 +277,12 @@ function EditModal({
       Swal.close();
 
       if (ok) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'บันทึก Page SEO สำเร็จ',
-          confirmButtonText: 'ตกลง',
-        });
-        setEditing(null); // กลับไปหน้าเดิม
+        await Swal.fire({ icon: 'success', title: 'บันทึก Page SEO สำเร็จ', confirmButtonText: 'ตกลง' });
+        setEditing(null);
       }
     } catch (e: any) {
       Swal.close();
-      await Swal.fire({
-        icon: 'error',
-        title: 'บันทึกไม่สำเร็จ',
-        text: e?.message || 'ลองใหม่อีกครั้ง',
-        confirmButtonText: 'ตกลง',
-      });
+      await Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: e?.message || 'ลองใหม่อีกครั้ง' });
     } finally {
       setBtnLoading(false);
     }
@@ -313,16 +300,10 @@ function EditModal({
           <Input label="Title" value={form.title} onChange={(v) => setForm((s) => ({ ...s, title: v }))} />
           <TextArea rows={4} label="Description" value={form.description} onChange={(v) => setForm((s) => ({ ...s, description: v }))} />
 
-          {/* อัปโหลดรูป 4 ช่อง */}
           <OgPicker4 label="OG Images (สูงสุด 4)" value={ogList} onChange={setOgList} />
 
           <div className="flex items-center gap-2">
-            <input
-              id="noindex"
-              type="checkbox"
-              checked={!!form.noindex}
-              onChange={(e) => setForm((s) => ({ ...s, noindex: e.target.checked }))}
-            />
+            <input id="noindex" type="checkbox" checked={!!form.noindex} onChange={(e) => setForm((s) => ({ ...s, noindex: e.target.checked }))} />
             <label htmlFor="noindex" className="text-sm">noindex</label>
           </div>
 
@@ -383,7 +364,5 @@ function JsonArea({ label, value, onChange, placeholder }: { label: string; valu
     </div>
   );
 }
-
-/* ---------- helpers ---------- */
 function parseOrRaw(s: string) { try { return JSON.parse(s); } catch { return s; } }
 function safeJson(j: any) { if (!j) return null; if (typeof j === 'object') return j; try { return JSON.parse(String(j)); } catch { return null; } }
