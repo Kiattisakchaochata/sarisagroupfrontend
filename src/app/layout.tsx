@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import Providers from '@/components/Providers';
@@ -16,15 +15,16 @@ type Brand = {
   ogDefault?: string|null;
 };
 
+// ✅ ปรับมาเรียก public API (ไม่ใช่ /api/admin/seo)
 async function fetchBrand(): Promise<Brand> {
   const apiBase =
     (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
   if (!apiBase) return {};
   try {
-    const r = await fetch(`${apiBase}/api/brand`, { cache: 'no-store' });
+    const r = await fetch(`${apiBase}/api/public/seo/site`, { cache: 'no-store' });
     if (!r.ok) return {};
     const j = await r.json().catch(() => ({}));
-    return j?.brand || {};
+    return j?.site || {};
   } catch { return {}; }
 }
 
@@ -35,7 +35,6 @@ export const metadata: Metadata = {
     'ครัวคุณจี๊ด ร้านอาหารพื้นบ้านและคาเฟ่ บรรยากาศอบอุ่น อาหารทะเลสด อร่อย คุ้มค่า พร้อมบริการชุมชนของ Sarisagroup',
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: '/', languages: { 'th-TH': '/' } },
-  // ❌ เอา themeColor ออกจาก metadata (ย้ายไป viewport ด้านล่าง)
   manifest: '/site.webmanifest',
   icons: {
     icon: [
@@ -111,7 +110,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     ].filter(Boolean) as any[],
   };
 
-  // JSON-LD (schema.org เปลี่ยนโดเมนไม่ได้)
   const website = { '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND, url: SITE_URL };
   const org     = { '@context': 'https://schema.org', '@type': 'Organization', name: BRAND, url: SITE_URL };
 
@@ -119,11 +117,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="th">
       <head>
         <meta charSet="utf-8" />
-        {/* override manifest/themeColor ถ้าตั้งในแอดมิน */}
         {brand.manifestUrl && <link rel="manifest" href={brand.manifestUrl} />}
         {brand.themeColor && <meta name="theme-color" content={brand.themeColor} />}
 
-        {/* override icons ถ้ามี */}
         {iconsOverride.icon.map((it, i)=>(
           <link key={`ico-${i}`} rel="icon" href={it.url} sizes={it.sizes} />
         ))}
@@ -131,15 +127,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <link key={`apple-${i}`} rel="apple-touch-icon" href={it.url} sizes={it.sizes} />
         ))}
 
-        {/* JSON-LD */}
         <JsonLd id="ld-website" data={website} />
         <JsonLd id="ld-organization" data={org} />
 
-        {/* Tracking (HEAD) */}
         {/* @ts-expect-error Async Server Component */}
         <TrackingInjectorHead />
 
-        {/* เพิ่ม meta og:image override (ถ้ามี) */}
         {brand.ogDefault && (
           <>
             <meta property="og:image" content={brand.ogDefault} />
@@ -150,8 +143,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-base-100 text-base-content">
         <SwalBridge />
         <Providers>{children}</Providers>
-
-        {/* Tracking (BODY_END) */}
         {/* @ts-expect-error Async Server Component */}
         <TrackingInjectorBody />
       </body>

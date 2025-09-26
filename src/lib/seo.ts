@@ -44,12 +44,14 @@ async function safeFetchJSON<T = any>(url: string, timeoutMs = 1500): Promise<Pa
 }
 
 export async function fetchSiteSeo() {
-  return safeFetchJSON(`${API_BASE}/admin/seo/site`);
+  // ✅ เปลี่ยนเป็น public route
+  return safeFetchJSON(`${API_BASE}/seo/site`);
 }
 
 export async function fetchPageSeo(path: string) {
   const p = normPath(path);
-  return safeFetchJSON(`${API_BASE}/admin/seo/page?path=${encodeURIComponent(p)}`);
+  // ✅ เปลี่ยนเป็น public route
+  return safeFetchJSON(`${API_BASE}/seo/page?path=${encodeURIComponent(p)}`);
 }
 
 function collectImages(page: any, site: any): string[] {
