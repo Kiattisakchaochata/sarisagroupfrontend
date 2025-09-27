@@ -2,12 +2,12 @@
 import 'server-only';
 import Link from 'next/link';
 import StarRater from '@/components/ratings/StarRater';
-import { buildSeoForPath } from '@/seo/fetchers';
+import { fetchSiteSeo, fetchPageSeoByPath } from '@/seo/fetchers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 /* ------------ utils ------------- */
 function normPath(p?: string) {
@@ -37,7 +37,6 @@ function isAllowed(v: unknown) {
   }
   return false;
 }
-
 function getAllowFlag(img: any): boolean {
   const v =
     img?.allow_review ??
@@ -50,19 +49,17 @@ function getAllowFlag(img: any): boolean {
   return isAllowed(v);
 }
 
-/* ----- JSON-LD helpers ----- */
+/* ----- JSON-LD helper ----- */
 function JsonLd({ data, id }: { data: Record<string, unknown>; id?: string }) {
   return (
     <script
       id={id}
       type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(data, null, 2).replace(/<\//g, '<\\/'),
-      }}
+      // กัน </script>
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data, null, 2).replace(/<\//g, '<\\/') }}
     />
   );
 }
-
 function collectImages(page: any, site: any): string[] {
   const a = Array.isArray(page?.jsonld?.image) ? page.jsonld.image : [];
   const b = Array.isArray(site?.jsonld?.image) ? site.jsonld.image : [];
@@ -74,50 +71,20 @@ function collectImages(page: any, site: any): string[] {
   return Array.from(new Set(all)).slice(0, 4);
 }
 
-function mergeJsonLd(site: any, page: any, images: string[]) {
-  const siteObj = site?.jsonld && typeof site.jsonld === 'object' ? site.jsonld : undefined;
-  const pageObj = page?.jsonld && typeof page.jsonld === 'object' ? page.jsonld : undefined;
-
-  if (pageObj && Array.isArray((pageObj as any)['@graph'])) {
-    const out: any = { '@context': 'https://schema.org', '@graph': (pageObj as any)['@graph'] };
-    if (images.length) {
-      out['@graph'] = out['@graph'].map((n: any) => {
-        const node = { ...n };
-        if (
-          node &&
-          (node['@type'] === 'WebPage' ||
-            node['@type'] === 'Article' ||
-            node['@type'] === 'Product' ||
-            node['@type'] === 'Organization')
-        ) {
-          node.image = node.image ?? images;
-        }
-        return node;
-      });
-    }
-    return out;
-  }
-
-  const out = { ...(siteObj || {}), ...(pageObj || {}) } as Record<string, any>;
-  if (images.length) out.image = images;
-  return out;
-}
-
 /* ------------ Metadata (SEO) ------------- */
-// params เป็น object ปกติ
-type PageProps = { params: Promise<{ id: string }> };
+// ✅ ใช้ params เป็น object ปกติ เพื่อตัด warning
+type PageProps = { params: { id: string } };
 
-export async function generateMetadata({ params }: PageProps) {
-  const { id } = await params;                     // ⬅️ ต้อง await
+// --- แทนที่ฟังก์ชัน generateMetadata เดิม ---
+export async function generateMetadata(props: { params: { id: string } } | { params: Promise<{ id: string }> }) {
+  // รองรับทั้งแบบ object และ Promise (await non-promise ได้ผลลัพธ์เดิม)
+  const { id } = await Promise.resolve((props as any).params);
+
   const path = normPath(`/stores/${id}/featured`);
-  const { site, page } = await buildSeoForPath(path);
-
-  const fallbackDesc =
-    process.env.NEXT_PUBLIC_DEFAULT_DESC ||
-    'Sarisagroup รวมร้านและธุรกิจชุมชน คัดสรรเมนูเด็ดและเรื่องราวดี ๆ ใกล้คุณ';
+  const [site, page] = await Promise.all([fetchSiteSeo(), fetchPageSeoByPath(path)]);
 
   const title = (page?.title || site?.meta_title || 'Sarisagroup') as string;
-  const description = (page?.description || site?.meta_description || fallbackDesc) as string;
+  const description = (page?.description || site?.meta_description || '') as string;
   const images = collectImages(page, site).map((url) => ({ url }));
   const robots = page?.noindex ? ({ index: false, follow: false } as const) : undefined;
 
@@ -137,16 +104,17 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-/* ------------ Page ------------- */
-export default async function StoreFeaturedPage({ params }: PageProps) {
-  const { id } = await params;                     // ⬅️ ต้อง await
+// --- แทนที่ default export เดิม ---
+export default async function StoreFeaturedPage(props: { params: { id: string } } | { params: Promise<{ id: string }> }) {
+  const { id } = await Promise.resolve((props as any).params);
+
   const API_BASE = getApiBase();
   const path = normPath(`/stores/${id}/featured`);
+
   const res = await fetch(`${API_BASE}/stores/${id}/featured?limit=all`, {
     cache: 'no-store',
     headers: { Accept: 'application/json' },
   });
-
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(`Featured fetch failed: ${res.status} ${msg}`);
@@ -154,26 +122,18 @@ export default async function StoreFeaturedPage({ params }: PageProps) {
 
   const { store, images, siteSeo, pageSeo } = await res.json();
 
-  const imagesForSeo = collectImages(pageSeo, siteSeo);
-  const fallbackDesc =
-    process.env.NEXT_PUBLIC_DEFAULT_DESC ||
-    'Sarisagroup รวมร้านและธุรกิจชุมชน คัดสรรเมนูเด็ดและเรื่องราวดี ๆ ใกล้คุณ';
+  const [site, page] = await Promise.all([fetchSiteSeo(), fetchPageSeoByPath(path)]);
+  const imagesForSeo = collectImages(page ?? pageSeo, site ?? siteSeo);
 
-  const fallbackJsonLd = {
+  const jsonld = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: pageSeo?.title || siteSeo?.meta_title || `รูปเด่น — ${store?.name ?? ''}`,
-    headline: pageSeo?.title || `รูปเด่น — ${store?.name ?? ''}`,
-    description: pageSeo?.description || siteSeo?.meta_description || fallbackDesc,
     url: `${SITE_URL}${path}`,
+    name: store?.name || page?.title || site?.meta_title || 'Sarisagroup',
     image: imagesForSeo.length ? imagesForSeo : undefined,
+    description: page?.description || site?.meta_description || '',
     isPartOf: { '@type': 'WebSite', url: SITE_URL, name: 'Sarisagroup' },
   };
-
-  const jsonld =
-    (pageSeo?.jsonld && typeof pageSeo.jsonld === 'object'
-      ? mergeJsonLd(siteSeo, pageSeo, imagesForSeo)
-      : fallbackJsonLd) as Record<string, unknown>;
 
   if (!images?.length) {
     return (
@@ -181,7 +141,7 @@ export default async function StoreFeaturedPage({ params }: PageProps) {
         <JsonLd id="ld-store-featured" data={jsonld} />
         <main className="container mx-auto max-w-md px-4 md:px-6 py-10">
           <h1 className="text-xl font-semibold">ไม่พบข้อมูลรูปเด่น</h1>
-          <p className="text-sm text-gray-600 mt-1">ร้าน: {store?.name ?? params.id}</p>
+          <p className="text-sm text-gray-600 mt-1">ร้าน: {store?.name ?? id}</p>
           <Link
             href="/stores"
             className="mt-6 inline-flex items-center rounded-full bg-amber-600 text-white px-4 py-2 font-semibold"
@@ -244,7 +204,7 @@ export default async function StoreFeaturedPage({ params }: PageProps) {
                   {typeof avg === 'number' && (
                     <div className="absolute top-2 right-2 z-10">
                       <div className="flex items-center gap-1 rounded-full bg-black/70 backdrop-blur px-2 py-1 text-xs font-medium text-white shadow">
-                        <span className="text-amber-300">★</span>
+                        <span>★</span>
                         <span>{avg.toFixed(1)}</span>
                       </div>
                     </div>
