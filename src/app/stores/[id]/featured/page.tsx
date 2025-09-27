@@ -10,6 +10,14 @@ export const revalidate = 0;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
 /* ------------ utils ------------- */
+function normPath(p?: string) {
+  if (!p) return '/';
+  let s = String(p).trim();
+  if (!s.startsWith('/')) s = '/' + s;
+  if (s.length > 1) s = s.replace(/\/+$/, '');
+  return s;
+}
+
 function getApiBase() {
   const rawBase =
     process.env.NEXT_PUBLIC_API_BASE ??
@@ -49,7 +57,7 @@ function JsonLd({ data, id }: { data: Record<string, unknown>; id?: string }) {
       id={id}
       type="application/ld+json"
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify(data, null, 2).replace(/</g, '\\u003c'),
+        __html: JSON.stringify(data, null, 2).replace(/<\//g, '<\\/'),
       }}
     />
   );
@@ -61,7 +69,7 @@ function collectImages(page: any, site: any): string[] {
   const c = Array.isArray(page?.og_images) ? page.og_images : [];
   const d = Array.isArray(site?.og_images) ? site.og_images : [];
   const e = page?.og_image ? [page.og_image] : [];
-  const f = site?.og_image ? [site.og_image] : [];
+  const f = site?.og_image ? [site?.og_image] : [];
   const all = [...a, ...b, ...c, ...d, ...e, ...f].filter(Boolean) as string[];
   return Array.from(new Set(all)).slice(0, 4);
 }
@@ -96,16 +104,20 @@ function mergeJsonLd(site: any, page: any, images: string[]) {
 }
 
 /* ------------ Metadata (SEO) ------------- */
-// ✅ เปลี่ยนให้ params เป็น Promise แล้ว await ก่อนใช้
+// params เป็น object ปกติ
 type PageProps = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: PageProps) {
-  const { id } = await params;                 // ⬅️ ต้อง await
-  const path = `/stores/${id}/featured`;
+  const { id } = await params;                     // ⬅️ ต้อง await
+  const path = normPath(`/stores/${id}/featured`);
   const { site, page } = await buildSeoForPath(path);
 
+  const fallbackDesc =
+    process.env.NEXT_PUBLIC_DEFAULT_DESC ||
+    'Sarisagroup รวมร้านและธุรกิจชุมชน คัดสรรเมนูเด็ดและเรื่องราวดี ๆ ใกล้คุณ';
+
   const title = (page?.title || site?.meta_title || 'Sarisagroup') as string;
-  const description = (page?.description || site?.meta_description || '') as string;
+  const description = (page?.description || site?.meta_description || fallbackDesc) as string;
   const images = collectImages(page, site).map((url) => ({ url }));
   const robots = page?.noindex ? ({ index: false, follow: false } as const) : undefined;
 
@@ -126,11 +138,10 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 /* ------------ Page ------------- */
-// ✅ เช่นกัน ต้อง await params ก่อนแตกค่า id
 export default async function StoreFeaturedPage({ params }: PageProps) {
-  const { id } = await params;                 // ⬅️ ต้อง await
+  const { id } = await params;                     // ⬅️ ต้อง await
   const API_BASE = getApiBase();
-
+  const path = normPath(`/stores/${id}/featured`);
   const res = await fetch(`${API_BASE}/stores/${id}/featured?limit=all`, {
     cache: 'no-store',
     headers: { Accept: 'application/json' },
@@ -144,17 +155,21 @@ export default async function StoreFeaturedPage({ params }: PageProps) {
   const { store, images, siteSeo, pageSeo } = await res.json();
 
   const imagesForSeo = collectImages(pageSeo, siteSeo);
-  const path = `/stores/${id}/featured`;
+  const fallbackDesc =
+    process.env.NEXT_PUBLIC_DEFAULT_DESC ||
+    'Sarisagroup รวมร้านและธุรกิจชุมชน คัดสรรเมนูเด็ดและเรื่องราวดี ๆ ใกล้คุณ';
+
   const fallbackJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: pageSeo?.title || siteSeo?.meta_title || `รูปเด่น — ${store?.name ?? ''}`,
     headline: pageSeo?.title || `รูปเด่น — ${store?.name ?? ''}`,
-    description: pageSeo?.description || siteSeo?.meta_description || '',
+    description: pageSeo?.description || siteSeo?.meta_description || fallbackDesc,
     url: `${SITE_URL}${path}`,
     image: imagesForSeo.length ? imagesForSeo : undefined,
     isPartOf: { '@type': 'WebSite', url: SITE_URL, name: 'Sarisagroup' },
   };
+
   const jsonld =
     (pageSeo?.jsonld && typeof pageSeo.jsonld === 'object'
       ? mergeJsonLd(siteSeo, pageSeo, imagesForSeo)
@@ -166,7 +181,7 @@ export default async function StoreFeaturedPage({ params }: PageProps) {
         <JsonLd id="ld-store-featured" data={jsonld} />
         <main className="container mx-auto max-w-md px-4 md:px-6 py-10">
           <h1 className="text-xl font-semibold">ไม่พบข้อมูลรูปเด่น</h1>
-          <p className="text-sm text-gray-600 mt-1">ร้าน: {store?.name ?? id}</p>
+          <p className="text-sm text-gray-600 mt-1">ร้าน: {store?.name ?? params.id}</p>
           <Link
             href="/stores"
             className="mt-6 inline-flex items-center rounded-full bg-amber-600 text-white px-4 py-2 font-semibold"
