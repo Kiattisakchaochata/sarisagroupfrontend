@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 
 type Initial = {
   name: string;
@@ -14,7 +15,8 @@ type Initial = {
   is_active?: boolean;
   meta_title?: string;
   meta_description?: string;
-  cover_image?: string; // URL ของรูปเดิม (ถ้ามี)
+  cover_image?: string;                // URL รูปเดิม (ถ้ามี)
+  image_fit?: 'cover' | 'contain';     // ค่าที่บันทึกไว้ใน DB
 };
 
 type Props = {
@@ -24,24 +26,29 @@ type Props = {
 };
 
 export default function StoreForm({ mode = 'create', storeId, initial }: Props) {
-  const router = useRouter();
-
   const [form, setForm] = useState<Initial>({
     name: initial?.name ?? '',
     slug: initial?.slug ?? '',
     description: initial?.description ?? '',
     address: initial?.address ?? '',
     phone: initial?.phone ?? '',
-    category_id: initial?.category_id ?? '', // ไม่บังคับส่งก็ได้ ฝั่ง BE มี fallback ให้แล้ว
+    category_id: initial?.category_id ?? '',
     is_active: initial?.is_active ?? true,
     meta_title: initial?.meta_title ?? '',
     meta_description: initial?.meta_description ?? '',
-    cover_image: initial?.cover_image, // เก็บไว้เพื่อแสดงพรีวิวรูปเดิม
+    cover_image: initial?.cover_image,
+    image_fit: initial?.image_fit ?? 'contain',
   });
+
   const [cover, setCover] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // ✅ ซิงก์ค่าเมื่อ initial เปลี่ยน (ตอนหน้าแก้ไขโหลดเสร็จ)
+  // โหมดแสดงพรีวิว cover: contain/cover
+  const [coverContain, setCoverContain] = useState<boolean>(
+    (initial?.image_fit ?? 'contain') !== 'cover'
+  );
+
+  // ซิงก์ค่าเมื่อ initial เปลี่ยน
   useEffect(() => {
     if (!initial) return;
     setForm({
@@ -55,8 +62,10 @@ export default function StoreForm({ mode = 'create', storeId, initial }: Props) 
       meta_title: initial.meta_title ?? '',
       meta_description: initial.meta_description ?? '',
       cover_image: initial.cover_image,
+      image_fit: initial.image_fit ?? 'contain',
     });
-    setCover(null); // รีเซ็ตไฟล์ใหม่ ถ้าเปิดหน้าแก้ไขหลายครั้ง
+    setCover(null);
+    setCoverContain((initial.image_fit ?? 'contain') !== 'cover');
   }, [initial]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -78,36 +87,50 @@ export default function StoreForm({ mode = 'create', storeId, initial }: Props) 
 
     try {
       const fd = new FormData();
-      const payload = {
+      const payload: Initial = {
         ...form,
         slug: cleanSlug(form.slug || form.name),
+        image_fit: coverContain ? 'contain' : 'cover',
       };
 
       Object.entries(payload).forEach(([k, v]) => {
-        // boolean → string ให้ชัดเจน
         fd.append(k, typeof v === 'boolean' ? String(v) : (v ?? ''));
       });
       if (cover) fd.append('cover', cover);
 
-      if (mode === 'edit') {
-        if (!storeId) throw new Error('missing storeId for edit mode');
-        await apiFetch(`/admin/stores/${storeId}`, { method: 'PATCH', body: fd });
-      } else {
-        await apiFetch('/admin/stores', { method: 'POST', body: fd });
-      }
+      // ✅ บังคับเซ็ต image_fit ทุกครั้ง
+      fd.set('image_fit', coverContain ? 'contain' : 'cover');
 
-      // กลับ Dashboard และ refresh
-      router.replace('/admin');
-      router.refresh();
-    } catch (err: any) {
-      console.error(err);
-      alert(`❌ บันทึกไม่สำเร็จ: ${err?.message || 'unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
+      if (mode === 'edit') {
+    if (!storeId) throw new Error('missing storeId for edit mode');
+    await apiFetch(`/admin/stores/${storeId}`, { method: 'PATCH', body: fd });
+  } else {
+    await apiFetch('/admin/stores', { method: 'POST', body: fd });
+  }
+
+  // ✅ ใช้ SweetAlert แบบ success
+  await Swal.fire({
+    icon: 'success',
+    title: 'บันทึกสำเร็จ',
+    timer: 1300,
+    timerProgressBar: true,
+    showConfirmButton: false,
+  });
+
+} catch (err: any) {
+  // ❌ ใช้ SweetAlert แบบ error
+  await Swal.fire({
+    icon: 'error',
+    title: 'บันทึกไม่สำเร็จ',
+    text: err?.message || 'โปรดลองใหม่อีกครั้ง',
+    confirmButtonText: 'ตกลง',
+  });
+} finally {
+  setLoading(false);
+}
   };
 
-  // ✅ พรีวิวรูป: ถ้าเลือกไฟล์ใหม่ใช้ไฟล์นั้น, ไม่งั้นใช้ cover_image เดิม
+  // ✅ พรีวิวรูป
   const coverPreview = useMemo(() => {
     if (cover) return URL.createObjectURL(cover);
     if (form.cover_image) return form.cover_image;
@@ -231,12 +254,26 @@ export default function StoreForm({ mode = 'create', storeId, initial }: Props) 
         {coverPreview ? (
           <div>
             <div className="mb-2 text-sm text-slate-200">พรีวิว</div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverPreview}
-              alt="cover preview"
-              className="w-full max-w-xs rounded-xl border border-white/10"
-            />
+            <div className="rounded-xl overflow-hidden bg-white border border-white/10">
+              <div className="relative w-full max-w-xs aspect-[4/3]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverPreview}
+                  alt="cover preview"
+                  className={`absolute inset-0 h-full w-full ${coverContain ? 'object-contain' : 'object-cover'}`}
+                />
+              </div>
+            </div>
+
+            {/* สวิตช์สลับ contain/cover */}
+            <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={coverContain}
+                onChange={(e) => setCoverContain(e.target.checked)}
+              />
+              แสดงแบบ <code>object-contain</code>
+            </label>
           </div>
         ) : null}
       </div>

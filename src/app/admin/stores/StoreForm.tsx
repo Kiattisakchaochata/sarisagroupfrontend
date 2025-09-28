@@ -305,9 +305,17 @@ export default function StoreForm({
         <label className="block text-sm mb-1">รูปปก (Cover)</label>
         <input type="file" accept="image/*" onChange={e => setCover(e.target.files?.[0] ?? null)} />
         {initial?.cover_image && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={initial.cover_image} alt="cover" className="mt-2 h-28 rounded-lg object-cover" />
-        )}
+  <div className="mt-2 rounded-lg overflow-hidden border border-white/10 bg-white w-full max-w-xs">
+    <div className="relative aspect-[4/3]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={initial.cover_image}
+        alt="cover"
+        className="absolute inset-0 h-full w-full object-contain"
+      />
+    </div>
+  </div>
+)}
       </div>
 
       <div className="pt-2">

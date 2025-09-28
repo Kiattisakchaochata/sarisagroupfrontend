@@ -134,6 +134,7 @@ export default async function StoreFeaturedPage(props: { params: { id: string } 
     description: page?.description || site?.meta_description || '',
     isPartOf: { '@type': 'WebSite', url: SITE_URL, name: 'Sarisagroup' },
   };
+  console.log("=== DEBUG JSONLD ===", JSON.stringify(jsonld, null, 2));
 
   if (!images?.length) {
     return (

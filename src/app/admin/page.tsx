@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+// ⛔️ ลบ: import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 
 type StoreRow = {
@@ -32,53 +32,50 @@ type AdminStats = {
     avgRating?: number;
   }[];
 };
+// ⬇️ วางต่อจาก type AdminStats
+type VisitorStats = {
+  totalVisitors: number;
+};
 
 function AdminPageInner() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visitor, setVisitor] = useState<VisitorStats | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
+  let mounted = true;
+  (async () => {
+    try {
+      // 1) ดึงรายการร้าน (ใช้สำหรับ derive รวมผู้เข้าชม ถ้าไม่มี /admin/stats)
+      const storeResp = await apiFetch<StoreListResp>('/admin/stores');
+      if (!mounted) return;
+      setStores(storeResp.stores ?? []);
+
+      // 2) พยายามดึง /admin/stats ถ้ามี (optional)
       try {
-        // 1) ดึงรายการร้าน (เป็นหลัก)
-        const storeResp = await apiFetch<StoreListResp>('/admin/stores');
+        const s = await apiFetch<AdminStats>('/admin/stats', { method: 'GET' });
+        if (mounted) setStats(s);
+      } catch {
         if (!mounted) return;
-        setStores(storeResp.stores ?? []);
-
-        // 2) พยายามดึง /admin/stats ถ้ามี (optional)
-        try {
-          const s = await apiFetch<AdminStats>('/admin/stats', { method: 'GET' });
-          if (mounted) setStats(s);
-        } catch {
-          // ถ้าไม่มี /admin/stats → สร้าง stats แบบอนุมานจากลิสต์ร้าน
-          if (!mounted) return;
-          const derived = deriveStatsFromStores(storeResp.stores ?? []);
-          setStats(derived);
-        }
-      } finally {
-        if (mounted) setLoading(false);
+        const derived = deriveStatsFromStores(storeResp.stores ?? []);
+        setStats(derived);
       }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
-  // สร้างการ์ดร้านสำหรับแสดง (รองรับทั้งกรณีมี/ไม่มี stats API)
-  const storeCards = useMemo(() => {
-    if (stats?.stores?.length) return stats.stores;
-    // ไม่มี stats → สร้างจาก stores
-    return (stores ?? []).map((s) => {
-      const views = s.visitorCounter?.total ?? 0;
-      const avg =
-        s.reviews && s.reviews.length
-          ? s.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / s.reviews.length
-          : undefined;
-      return { id: s.id, name: s.name, views, avgRating: avg };
-    });
-  }, [stats, stores]);
+      // ⬇️ เพิ่ม: ดึงผู้เข้าชมรวมจาก /visitor/stats
+      try {
+        const v = await apiFetch<VisitorStats>('/visitor/stats', { method: 'GET' });
+        if (mounted) setVisitor(v);
+      } catch { /* ignore */ }
+
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  })();
+  return () => { mounted = false; };
+}, []);
+
+  // ⛔️ ลบ: const storeCards = useMemo(...)
 
   return (
     <main className="container mx-auto max-w-6xl px-4 md:px-6 py-10 space-y-8 text-white">
@@ -88,38 +85,39 @@ function AdminPageInner() {
         <p className="text-gray-400">จัดการข้อมูลบนเว็บไซต์ Sarisagroup</p>
       </header>
 
-      {/* การ์ดสรุป 4 ใบ */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon="👤" label="ผู้ใช้งาน" value={loading ? '—' : (stats?.totalUsers ?? 0)} />
-        <StatCard icon="🗂️" label="หมวดหมู่" value={loading ? '—' : (stats?.totalCategories ?? 0)} />
-        <StatCard icon="🏪" label="ร้านทั้งหมด" value={loading ? '—' : (stats?.totalStores ?? 0)} />
-        <StatCard icon="👁️" label="ผู้เข้าชมทั้งหมด" value={loading ? '—' : (stats?.totalViews ?? 0)} />
-      </section>
-
-      {/* การ์ดร้านค้า */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">ร้านค้า</h2>
-          <Link
-            href="/admin/stores/new"
-            className="rounded-full bg-amber-500 text-white px-4 py-2 text-sm font-semibold hover:bg-amber-600"
-          >
-            + สร้างร้านค้าใหม่
-          </Link>
-        </div>
-
-        {!loading && (storeCards?.length ?? 0) === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-gray-400">
-            ยังไม่มีร้านค้า — เริ่มสร้างร้านค้าแรกเพื่อแสดงการ์ดร้านค้าในหน้านี้
+      {/* การ์ดสรุปผู้เข้าชมรวมแบบไฮไลต์ (เหลือใบเดียวตามที่ต้องการ) */}
+      <section className="grid grid-cols-1 gap-4">
+        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8">
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(37,99,235,0.9) 0%, rgba(147,51,234,0.9) 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                'radial-gradient(currentColor 1px, transparent 1px), radial-gradient(currentColor 1px, transparent 1px)',
+              backgroundPosition: '0 0, 10px 10px',
+              backgroundSize: '20px 20px',
+              color: 'rgba(255,255,255,0.35)',
+            }}
+          />
+          <div className="relative flex items-center justify-between">
+            <div>
+              <div className="text-white/90 text-sm font-medium">ผู้เข้าชมทั้งหมด</div>
+              <div className="mt-2 text-5xl sm:text-6xl font-extrabold text-white drop-shadow">
+                {loading ? '—' : ((visitor?.totalVisitors ?? stats?.totalViews ?? 0).toLocaleString('th-TH'))}
+              </div>
+            </div>
+            <div className="text-5xl sm:text-6xl">👁️</div>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {(storeCards ?? []).map((s) => (
-            <StoreCard key={s.id} store={s} />
-          ))}
         </div>
       </section>
+
+      {/* ⛔️ ลบทั้งบล็อก “ร้านค้า” ออก */}
     </main>
   );
 }
@@ -143,16 +141,18 @@ function deriveStatsFromStores(stores: StoreRow[]): AdminStats {
   const totalStores = stores.length;
   const totalCategories = new Set(stores.map((s) => s.category_id).filter(Boolean)).size;
   const totalViews = stores.reduce((sum, s) => sum + (s.visitorCounter?.total ?? 0), 0);
-  const storesForCards = stores.map((s) => {
+
+  // ถึงแม้เราจะไม่แสดงการ์ดร้านค้าแล้ว แต่คงรูปแบบเดิมไว้เผื่อใช้ในอนาคต
+  const storesForCards = stores.map((s, i) => {
     const avg =
       s.reviews && s.reviews.length
         ? s.reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / s.reviews.length
         : undefined;
-    return { id: s.id, name: s.name, views: s.visitorCounter?.total ?? 0, avgRating: avg };
+    return { id: s.id ?? `store-${i}`, name: s.name, views: s.visitorCounter?.total ?? 0, avgRating: avg };
   });
 
   return {
-    totalUsers: 0, // ไม่มี endpoint ผู้ใช้ → ตั้ง 0 ไว้ก่อน
+    totalUsers: 0,
     totalCategories,
     totalStores,
     totalViews,
@@ -161,40 +161,4 @@ function deriveStatsFromStores(stores: StoreRow[]): AdminStats {
 }
 
 /* ---------------- Components ---------------- */
-
-function StatCard({ icon, label, value }: { icon: string; label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 flex items-center gap-4 shadow-sm">
-      <div className="grid h-14 w-14 place-items-center rounded-xl bg-white/10 text-2xl">{icon}</div>
-      <div>
-        <div className="text-2xl font-bold leading-tight">{value}</div>
-        <div className="text-gray-300">{label}</div>
-      </div>
-    </div>
-  );
-}
-
-function StoreCard({
-  store,
-}: {
-  store: { id: string; name: string; views: number; avgRating?: number };
-}) {
-  return (
-    <Link
-      href={`/admin/stores/${store.id}`}
-      className="rounded-2xl border border-white/10 bg-white/5 p-5 hover:shadow-md transition flex flex-col gap-2"
-    >
-      <div className="text-base font-semibold truncate">{store.name}</div>
-      <div className="text-sm text-gray-300 flex items-center justify-between">
-        <span>ผู้เข้าชม</span>
-        <span className="font-semibold">{store.views.toLocaleString('th-TH')}</span>
-      </div>
-      <div className="text-sm text-gray-300 flex items-center justify-between">
-        <span>คะแนนเฉลี่ย</span>
-        <span className="font-semibold">
-          {typeof store.avgRating === 'number' ? `${store.avgRating.toFixed(1)} / 5` : '-'}
-        </span>
-      </div>
-    </Link>
-  );
-}
+// ⛔️ ลบคอมโพเนนต์ StoreCard ออกทั้งหมด (ไม่ถูกใช้งานแล้ว)

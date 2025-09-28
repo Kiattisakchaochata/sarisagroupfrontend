@@ -1,4 +1,3 @@
-// src/app/stores/page.tsx
 import 'server-only';
 import StoresClient from './StoresClient';
 import { buildSeoForPath } from '@/seo/fetchers';
@@ -70,7 +69,10 @@ export default async function StoresPage() {
 
   return (
     <>
+      {/* ✅ JSON-LD สำหรับ SEO */}
       <JsonLd id="ld-stores" data={jsonld} />
+
+      {/* ✅ Client component ที่ต้องไปดึง /stores API และส่ง image_fit ต่อไปยัง StoreCard */}
       <StoresClient />
     </>
   );

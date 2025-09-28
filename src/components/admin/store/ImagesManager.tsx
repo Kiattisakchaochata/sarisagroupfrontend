@@ -1,3 +1,4 @@
+//src/components/store/ImagesManager.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -17,6 +18,7 @@ export default function ImagesManager({ storeId }: { storeId: string }) {
   const [imageUrl, setImageUrl] = useState('');
   const [altText, setAltText] = useState('');
   const [order, setOrder] = useState<number>(items.length + 1);
+  const [thumbContain, setThumbContain] = useState<boolean>(true);
 
   const load = async () => {
     setLoading(true);
@@ -109,6 +111,17 @@ export default function ImagesManager({ storeId }: { storeId: string }) {
           เพิ่มรูป
         </button>
       </form>
+      {/* สลับโหมดแสดงผลรูปย่อย */}
+<div className="mt-3">
+  <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+    <input
+      type="checkbox"
+      checked={thumbContain}
+      onChange={(e) => setThumbContain(e.target.checked)}
+    />
+    แสดงแบบ <code>object-contain</code>
+  </label>
+</div>
 
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
@@ -118,10 +131,14 @@ export default function ImagesManager({ storeId }: { storeId: string }) {
         ) : (
           items.map((it) => (
             <div key={it.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
-              <div className="aspect-[16/10] bg-black/20">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={it.image_url} alt={it.alt_text ?? ''} className="h-full w-full object-cover" />
-              </div>
+              <div className="aspect-[4/3] bg-white">
+  {/* eslint-disable-next-line @next/next/no-img-element */}
+  <img
+    src={it.image_url}
+    alt={it.alt_text ?? ''}
+    className={`h-full w-full ${thumbContain ? 'object-contain' : 'object-cover'}`}
+  />
+</div>
               <div className="p-3 text-sm flex items-center justify-between">
                 <div>
                   <div className="text-slate-200">#{it.order_number}</div>

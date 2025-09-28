@@ -143,7 +143,7 @@ export default function HomeClient() {
           items={g.items}
           title={g.store_name}
           hrefAll={`/stores/${g.store_id}/featured`}
-          cardWidth={400}
+          cardWidth={355}
           cardHeight={450}
           maxItems={PER_STORE_MAX}
           gapPx={16}

@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from 'next';
 import Providers from '@/components/Providers';
 import SwalBridge from './SwalBridge';
 import { TrackingInjectorHead, TrackingInjectorBody } from '@/components/TrackingInjector';
-
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const BRAND_DEFAULT = process.env.NEXT_PUBLIC_BRAND_NAME || 'ครัวคุณจี๊ด';
 
@@ -141,11 +140,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="min-h-screen bg-base-100 text-base-content">
-        <SwalBridge />
-        <Providers>{children}</Providers>
-        {/* @ts-expect-error Async Server Component */}
-        <TrackingInjectorBody />
-      </body>
+  <SwalBridge />
+  <Providers>{children}</Providers>
+  <TrackingInjectorBody />
+</body>
     </html>
   );
 }

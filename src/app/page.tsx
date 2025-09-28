@@ -1,6 +1,7 @@
 // src/app/page.tsx
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import VisitPing from '@/components/VisitPing';
 import HomeClient from '@/components/home/HomeClient';
 import { fetchSiteSeo, fetchPageSeoByPath } from '@/seo/fetchers';
 
@@ -80,6 +81,7 @@ export default async function HomePage() {
       <JsonLd id="ld-home" data={jsonld} />
 
       <Navbar />
+      <VisitPing />  {/* ยิงนับเฉพาะหน้าโฮม */}
       <HomeClient />
       <Footer />
     </>

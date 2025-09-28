@@ -60,7 +60,7 @@ export default function AdminSeoPagesPage() {
         description: payload.description ?? '',
         og_image: payload.og_image ?? '',
         noindex: !!payload.noindex,
-        jsonld: safeJson(payload.jsonld),
+        jsonld: safeJson(payload.jsonld) || {},
       };
 
       await apiFetch('/admin/seo/page', {
@@ -226,67 +226,86 @@ function EditModal({
 
   const [ogList, setOgList] = useState<string[]>(['', '', '', '']);
   const [btnLoading, setBtnLoading] = useState(false);
+  const [jsonldTouched, setJsonldTouched] = useState(false);
 
   useEffect(() => {
-    const fromJson = Array.isArray((editing as any)?.jsonld?.image)
-      ? ((editing as any).jsonld.image as string[])
-      : [];
-    const base = [editing.og_image, ...fromJson].filter(Boolean) as string[];
-    const uniq = Array.from(new Set(base)).slice(0, 4);
-    setOgList([...uniq, '', '', '', ''].slice(0, 4));
-    setForm({
-      path: editing.path ?? '',
-      title: editing.title ?? '',
-      description: editing.description ?? '',
-      noindex: !!editing.noindex,
-      jsonld: editing.jsonld ?? {},
-    });
-  }, [editing]);
+  const fromJson = Array.isArray((editing as any)?.jsonld?.image)
+    ? ((editing as any).jsonld.image as string[])
+    : [];
+  const base = [editing.og_image, ...fromJson].filter(Boolean) as string[];
+  const uniq = Array.from(new Set(base)).slice(0, 4);
+
+  setOgList([...uniq, '', '', '', ''].slice(0, 4));
+  setForm({
+    path: editing.path ?? '',
+    title: editing.title ?? '',
+    description: editing.description ?? '',
+    noindex: !!editing.noindex,
+    jsonld: editing.jsonld ?? {},
+  });
+
+  // reset touch flag ทุกครั้งที่เปิด modal รายการใหม่
+  setJsonldTouched(false);
+}, [editing]);
+useEffect(() => {
+  if (jsonldTouched) return; // ผู้ใช้แก้ JSON-LD เองแล้ว ไม่ซิงก์ทับ
+
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const p = normPath(form.path);
+
+  const base: any = (typeof form.jsonld === 'object' && form.jsonld) ? { ...form.jsonld } : {};
+  base['@context'] = 'https://schema.org';
+  base['@type'] = base['@type'] || 'WebPage';
+  base.url = `${siteUrl}${p}`;
+  base.name = form.title || 'Sarisagroup';
+  base.description = form.description || '';
+  base.image = ogList.filter(Boolean);
+
+  // ✅ อัปเดตก็ต่อเมื่อค่าเปลี่ยนจริง ๆ
+  if (!deepEqual(base, form.jsonld)) {
+    setForm((s) => ({ ...s, jsonld: base }));
+  }
+}, [form.title, form.description, form.path, ogList, jsonldTouched]);
 
   const saveWithImages = async () => {
-    const primary = ogList.find(Boolean) || editing.og_image || '';
-    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const primary = ogList.find(Boolean) || editing.og_image || '';
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const p = normPath(form.path);
 
-    const merged: any = (typeof form.jsonld === 'object' && form.jsonld) ? { ...form.jsonld } : {};
-    merged.image = ogList.filter(Boolean);
+  const merged: any = (typeof form.jsonld === 'object' && form.jsonld) ? { ...form.jsonld } : {};
+  merged['@context'] = 'https://schema.org';
+  merged['@type'] = merged['@type'] || 'WebPage';
+  merged.url = `${siteUrl}${p}`;
+  merged.name = form.title || 'Sarisagroup';
+  merged.description = form.description || '';      // บังคับอัปเดตจากฟอร์ม
+  merged.image = ogList.filter(Boolean);            // บังคับอัปเดตจากตัวเลือกภาพ
 
-    if (!merged['@context']) merged['@context'] = 'https://schema.org';
-    if (!merged['@type'])    merged['@type']    = 'WebPage';
-    if (!merged.url) {
-      const p = normPath(form.path);
-      merged.url = `${siteUrl}${p}`;
+  setBtnLoading(true);
+  Swal.fire({ title: 'กำลังบันทึก…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+  try {
+    const ok = await onSave({
+      id: editing.id,
+      path: form.path,
+      title: form.title,
+      description: form.description,
+      og_image: primary,
+      noindex: !!form.noindex,
+      jsonld: merged,
+    });
+
+    Swal.close();
+    if (ok) {
+      await Swal.fire({ icon: 'success', title: 'บันทึก Page SEO สำเร็จ', confirmButtonText: 'ตกลง' });
+      setEditing(null);
     }
-    if (!merged.name)        merged.name        = form.title || 'Sarisagroup';
-    if (!merged.description) merged.description = form.description || '';
-
-    setBtnLoading(true);
-
-    Swal.fire({ title: 'กำลังบันทึก…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    try {
-      const ok = await onSave({
-        id: editing.id,
-        path: form.path,
-        title: form.title,
-        description: form.description,
-        og_image: primary,
-        noindex: !!form.noindex,
-        jsonld: merged,
-      });
-
-      Swal.close();
-
-      if (ok) {
-        await Swal.fire({ icon: 'success', title: 'บันทึก Page SEO สำเร็จ', confirmButtonText: 'ตกลง' });
-        setEditing(null);
-      }
-    } catch (e: any) {
-      Swal.close();
-      await Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: e?.message || 'ลองใหม่อีกครั้ง' });
-    } finally {
-      setBtnLoading(false);
-    }
-  };
+  } catch (e: any) {
+    Swal.close();
+    await Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: e?.message || 'ลองใหม่อีกครั้ง' });
+  } finally {
+    setBtnLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm grid place-items-center p-4">
@@ -308,16 +327,19 @@ function EditModal({
           </div>
 
           <JsonArea
-            label="JSON-LD (object)"
-            placeholder={`ตัวอย่าง: {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "ชื่อหน้า",
-  "url": "${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/your-path"
+  label="JSON-LD (object)"
+  placeholder={`ตัวอย่าง: {
+"@context": "https://schema.org",
+"@type": "WebPage",
+"name": "ชื่อหน้า",
+"url": "${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/your-path"
 }`}
-            value={form.jsonld}
-            onChange={(v) => setForm((s) => ({ ...s, jsonld: v }))}
-          />
+  value={form.jsonld}
+  onChange={(v) => {
+    setJsonldTouched(true);            // ★ mark ว่าผู้ใช้แก้เองแล้ว
+    setForm((s) => ({ ...s, jsonld: v }));
+  }}
+/>
         </div>
 
         <div className="sticky bottom-0 bg-[#0f1115] px-6 pb-6 pt-3 rounded-b-2xl flex justify-end gap-2">
@@ -355,14 +377,30 @@ function JsonArea({ label, value, onChange, placeholder }: { label: string; valu
     <div>
       <label className="block text-sm mb-1">{label}</label>
       <textarea
-        rows={10}
-        value={raw}
-        placeholder={placeholder}
-        onChange={(e) => { setRaw(e.target.value); onChange(parseOrRaw(e.target.value)); }}
-        className="w-full rounded-lg border border-white/10 bg-[#1a1f27] px-3 py-2 outline-none font-mono text-sm"
-      />
+  rows={10}
+  value={raw}
+  placeholder={placeholder}
+  onChange={(e) => {
+    const text = e.target.value;
+    setRaw(text);
+    try {
+      const obj = JSON.parse(text);
+      onChange(obj);          // ✔ เก็บเป็น object เมื่อ JSON valid
+    } catch {
+      onChange(value);        // ✔ ถ้าไม่ valid คงค่า object เดิมไว้ (ไม่เขียนทับเป็น string)
+    }
+  }}
+  className="w-full rounded-lg border border-white/10 bg-[#1a1f27] px-3 py-2 outline-none font-mono text-sm"
+/>
     </div>
   );
 }
 function parseOrRaw(s: string) { try { return JSON.parse(s); } catch { return s; } }
 function safeJson(j: any) { if (!j) return null; if (typeof j === 'object') return j; try { return JSON.parse(String(j)); } catch { return null; } }
+function deepEqual(a: any, b: any) {
+  try { 
+    return JSON.stringify(a) === JSON.stringify(b); 
+  } catch { 
+    return a === b; 
+  }
+}
