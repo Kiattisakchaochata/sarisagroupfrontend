@@ -1,3 +1,4 @@
+// app/layout.tsx (หรือไฟล์ layout เดิมของคุณ)
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import Providers from '@/components/Providers';
@@ -14,7 +15,6 @@ type Brand = {
   ogDefault?: string|null;
 };
 
-// ✅ ปรับมาเรียก public API (ไม่ใช่ /api/admin/seo)
 async function fetchBrand(): Promise<Brand> {
   const apiBase =
     (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
@@ -34,23 +34,14 @@ export const metadata: Metadata = {
     'ครัวคุณจี๊ด ร้านอาหารพื้นบ้านและคาเฟ่ บรรยากาศอบอุ่น อาหารทะเลสด อร่อย คุ้มค่า พร้อมบริการชุมชนของ Sarisagroup',
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: '/', languages: { 'th-TH': '/' } },
-  manifest: '/site.webmanifest',
+  manifest: '/favicon/site.webmanifest',
   icons: {
     icon: [
       { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
-    apple: [
-      { url: '/favicon/apple-icon-57x57.png', sizes: '57x57' },
-      { url: '/favicon/apple-icon-60x60.png', sizes: '60x60' },
-      { url: '/favicon/apple-icon-72x72.png', sizes: '72x72' },
-      { url: '/favicon/apple-icon-76x76.png', sizes: '76x76' },
-      { url: '/favicon/apple-icon-114x114.png', sizes: '114x114' },
-      { url: '/favicon/apple-icon-120x120.png', sizes: '120x120' },
-      { url: '/favicon/apple-icon-144x144.png', sizes: '144x144' },
-      { url: '/favicon/apple-icon-152x152.png', sizes: '152x152' },
-      { url: '/favicon/apple-icon-180x180.png', sizes: '180x180' },
-    ],
+    // ⬇️ ปรับเหลืออันเดียวให้ตรงกับไฟล์ที่มีจริง
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
     shortcut: ['/favicon/favicon.ico'],
   },
   openGraph: {
@@ -74,9 +65,7 @@ export const metadata: Metadata = {
 };
 
 // ✅ ย้าย themeColor มาไว้ที่ viewport ตามที่ Next.js แนะนำ
-export const viewport: Viewport = {
-  themeColor: '#000000',
-};
+export const viewport: Viewport = { themeColor: '#000000' };
 
 // JSON-LD helper
 function JsonLd({ id, data }: { id: string; data: Record<string, unknown> }) {
@@ -90,7 +79,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const brand = await fetchBrand();
   const BRAND = brand.brandName || BRAND_DEFAULT;
 
-  // สร้างลิสต์ icons จาก brand (ถ้าใส่มาจะ override)
   const iconsOverride = {
     icon: [
       brand.icon16 && { url: brand.icon16, sizes: '16x16' },
@@ -140,10 +128,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="min-h-screen bg-base-100 text-base-content">
-  <SwalBridge />
-  <Providers>{children}</Providers>
-  <TrackingInjectorBody />
-</body>
+        <SwalBridge />
+        <Providers>{children}</Providers>
+        <TrackingInjectorBody />
+      </body>
     </html>
   );
 }
