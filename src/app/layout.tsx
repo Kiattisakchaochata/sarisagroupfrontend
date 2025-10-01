@@ -33,6 +33,30 @@ async function fetchBrand(): Promise<Brand> {
   }
 }
 
+/* -------------------- ⬇️ เพิ่มเฉพาะนี้: Global SEO (public) ⬇️ -------------------- */
+type PublicSiteSeo = {
+  meta_title?: string;
+  meta_description?: string;
+  keywords?: string;
+  og_image?: string;
+  jsonld?: any; // อาจมี image[], keywords ฯลฯ
+};
+
+async function fetchGlobalSeo(): Promise<PublicSiteSeo | null> {
+  const apiBase =
+    (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  if (!apiBase) return null;
+  try {
+    const r = await fetch(`${apiBase}/api/public/seo/site`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json().catch(() => ({} as any));
+    return (j?.site as PublicSiteSeo) || null;
+  } catch {
+    return null;
+  }
+}
+/* -------------------- ⬆️ เพิ่มเฉพาะนี้: Global SEO (public) ⬆️ -------------------- */
+
 /** Metadata base (ถูก override บางฟิลด์ด้วย brand runtime) */
 export const metadata: Metadata = {
   title: { default: BRAND_DEFAULT, template: `%s | ${BRAND_DEFAULT}` },
@@ -44,13 +68,12 @@ export const metadata: Metadata = {
   // ── manifest สำหรับ Android/Chrome
   manifest: '/favicon/site.webmanifest',
 
-  // ── ไอคอน: คง favicon (16/32) ไว้ และ "apple" เหลือเพียงตัวเดียวที่ root
+  // ── ไอคอน: คง favicon (16/32) ไว้ (ตัด apple ออกไปเพื่อกันซ้ำกับ <link> ด้านล่าง)
   icons: {
     icon: [
       { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
       { url: '/favicon/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
-    apple: [{ url: '/apple-touch-icon.png?v=3', sizes: '180x180' }],
     shortcut: ['/favicon/favicon.ico'],
   },
 
@@ -89,7 +112,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const brand = await fetchBrand();
   const BRAND = brand.brandName || BRAND_DEFAULT;
 
-  // icon override เฉพาะ favicon 16/32 (Android/desktop) — ส่วน apple ให้มีแค่ตัวเดียว เพื่อกันชน
+  /* ⬇️ ดึง Global SEO เพื่อฝังลง head (SSR ให้ติด view-source) */
+  const site = await fetchGlobalSeo();
+  const siteJsonLd: Record<string, any> | null = site
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        url: SITE_URL,
+        name: site.meta_title || BRAND,
+        description: site.meta_description || '',
+        image: Array.isArray(site?.jsonld?.image)
+          ? site!.jsonld.image
+          : (site?.og_image ? [site.og_image] : []),
+        keywords: site?.jsonld?.keywords || site?.keywords || undefined,
+      }
+    : null;
+
+  // icon override เฉพาะ favicon 16/32 (Android/desktop)
   const iconsOverride = {
     icon: [
       brand.icon16 && { url: brand.icon16, sizes: '16x16' },
@@ -100,10 +139,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const website = { '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND, url: SITE_URL };
   const org = { '@context': 'https://schema.org', '@type': 'Organization', name: BRAND, url: SITE_URL };
 
-  // ค่ามาตรฐานสำหรับ apple touch icon:
-  // - ถ้ามี brand.apple180 จะใช้ของแบรนด์
-  // - ถ้าไม่มีก็ใช้ /apple-touch-icon.png ที่ root (ต้องมีไฟล์จริง)
-  const appleTouchHref = (brand.apple180 || '/apple-touch-icon.png') + '?v=3';
+  // ใช้ไฟล์ root เดียว พร้อมเวอร์ชันเพื่อ bust cache
+  const appleTouchHref = '/apple-touch-icon.png?v=4';
 
   return (
     <html lang="th">
@@ -119,10 +156,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <link key={`ico-${i}`} rel="icon" href={it.url} sizes={it.sizes} />
         ))}
 
-        {/* ===== iOS & iOS Chrome สำคัญมาก: apple-touch-icon ต้องอยู่ที่ root และมีแค่ตัวเดียว ===== */}
-        <link rel="apple-touch-icon" href={appleTouchHref} sizes="180x180" />
-        {/* บางบริบทบน iOS ยังอ่าน precomposed: ใส่เพิ่มเพื่อความชัวร์ */}
-        <link rel="apple-touch-icon-precomposed" href={appleTouchHref} sizes="180x180" />
+        {/* ===== iOS: ต้องอยู่ root และมีแค่ตัวเดียว ===== */}
+        <link rel="apple-touch-icon" sizes="180x180" href={appleTouchHref} />
+        <link rel="apple-touch-icon-precomposed" sizes="180x180" href={appleTouchHref} />
+
+        {/* ⬇️ ฝัง Global SEO ลงไปให้เห็นใน view-source */}
+        {site?.meta_description && <meta name="description" content={site.meta_description} />}
+        {site?.keywords && <meta name="keywords" content={site.keywords} />}
+        {siteJsonLd && <JsonLd id="ld-site" data={siteJsonLd} />}
 
         <JsonLd id="ld-website" data={website} />
         <JsonLd id="ld-organization" data={org} />

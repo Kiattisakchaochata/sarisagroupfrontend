@@ -19,6 +19,51 @@ export type StoreFormValue = {
   meta_description?: string;
 };
 
+/* ====== เพิ่มคอนสแตนต์ขีดจำกัดตาม Prisma schema ======
+   name: VarChar(120)
+   slug: VarChar(160)
+   phone: VarChar(50)
+   meta_title: VarChar(255)
+   (description/address/meta_description เป็น Text ไม่กำหนดความยาว) */
+const NAME_MAX = 120;
+const SLUG_MAX = 160;
+const PHONE_MAX = 50;
+const META_TITLE_MAX = 255;
+
+/* helper: ตัดช่องว่าง/HTML entities ออกจากข้อความ error Prisma แล้วย่อยสาเหตุ */
+function prettifyPrismaTooLongMessage(raw: string): string | null {
+  if (!raw) return null;
+  const s = raw
+    .replace(/&nbsp;?/g, ' ')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // จับ pattern ว่า value ยาวเกิน + ระบุ column
+  if (/too long for the column/i.test(s)) {
+    // พยายามดึงชื่อคอลัมน์ออกมา
+    const m = s.match(/column:\s*([a-zA-Z_]+)/i);
+    const col = (m?.[1] || '').toLowerCase();
+
+    // map ชื่อคอลัมน์ → label และ max ที่เรารู้
+    const map: Record<string, { label: string; max?: number }> = {
+      name: { label: 'ชื่อร้าน', max: NAME_MAX },
+      slug: { label: 'Slug (URL)', max: SLUG_MAX },
+      phone: { label: 'โทรศัพท์', max: PHONE_MAX },
+      meta_title: { label: 'Meta Title', max: META_TITLE_MAX },
+    };
+    const info = map[col];
+
+    if (info) {
+      const limitText = info.max ? ` (สูงสุด ${info.max} ตัวอักษร)` : '';
+      return `ค่าที่กรอกในฟิลด์ “${info.label}” ยาวเกินกำหนด${limitText}`;
+    }
+    // ถ้าไม่รู้ field ก็ให้ข้อความกลาง ๆ
+    return 'ค่าที่กรอกยาวเกินชนิดข้อมูลที่กำหนดในระบบ (โปรดลดความยาวของข้อความ)';
+  }
+  return null;
+}
+
 export default function StoreForm({
   mode,
   storeId,
@@ -135,11 +180,39 @@ export default function StoreForm({
   const waitForPaint = () =>
     new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
+  // ตรวจความยาวฝั่ง FE ก่อนส่ง (กันเคสยาวเกินจน Prisma ตีกลับ)
+  function validateLengths(): string[] {
+    const errs: string[] = [];
+    const nameLen = (form.name || '').length;
+    const slugLen = (form.slug || '').length;
+    const phoneLen = (form.phone || '').length;
+    const titleLen = (form.meta_title || '').length;
+
+    if (nameLen > NAME_MAX) errs.push(`ชื่อร้าน: ยาว ${nameLen} ตัวอักษร (เกิน ${NAME_MAX})`);
+    if (slugLen > SLUG_MAX) errs.push(`Slug (URL): ยาว ${slugLen} ตัวอักษร (เกิน ${SLUG_MAX})`);
+    if (phoneLen > PHONE_MAX) errs.push(`โทรศัพท์: ยาว ${phoneLen} ตัวอักษร (เกิน ${PHONE_MAX})`);
+    if (titleLen > META_TITLE_MAX) errs.push(`Meta Title: ยาว ${titleLen} ตัวอักษร (เกิน ${META_TITLE_MAX})`);
+
+    return errs;
+  }
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading || !canSubmit) return;
     setLoading(true);
     setSlugErr('');
+
+    // ถ้ามีฟิลด์ใดยาวเกิน → แจ้งทันทีพร้อมปุ่ม OK
+    const lengthErrs = validateLengths();
+    if (lengthErrs.length > 0) {
+      openResultPopup(
+        false,
+        'บันทึกไม่สำเร็จ',
+        `มีฟิลด์ที่เกินเงื่อนไข:\n• ${lengthErrs.join('\n• ')}`
+      );
+      setLoading(false);
+      return;
+    }
 
     // เด้งโหลดดิ้งทันที
     openLoadingPopup();
@@ -170,9 +243,7 @@ export default function StoreForm({
 
       // แสดงผลสำเร็จ พร้อมปุ่มตกลง
       openResultPopup(true, 'บันทึกสำเร็จ');
-      // ไปหน้า detail หลังผู้ใช้กดตกลง หรือจะพาไปเลยก็ได้:
-      // closePopup(); router.replace(...); router.refresh();
-      // ที่นี่จะให้ผู้ใช้เห็น popup ก่อน แล้วพอกด OK จะปิดเอง
+      // ไปหน้า detail หลังผู้ใช้กดตกลง
       const okBtn = () => {
         document.getElementById('inline-popup-ok')?.removeEventListener('click', okBtn);
         router.replace(`/admin/stores/${savedId}`);
@@ -180,15 +251,29 @@ export default function StoreForm({
       };
       document.getElementById('inline-popup-ok')?.addEventListener('click', okBtn);
     } catch (e: any) {
-      let msg = e?.message || 'บันทึกไม่สำเร็จ';
+      // ข้อความพื้นฐานจาก error
+      let msg = e?.message?.toString?.() || 'บันทึกไม่สำเร็จ';
 
+      // ระบุว่า slug ซ้ำ
       if (isSlugDuplicateError(e)) {
-        msg = 'Slug นี้ถูกใช้แล้ว โปรดเปลี่ยนเป็นค่าอื่น';
+        msg = 'Slug นี้ถูกใช้งานแล้ว โปรดเปลี่ยนเป็นค่าอื่น';
         setSlugErr(msg);
         slugRef.current?.focus();
       }
 
-      // แสดงผลไม่สำเร็จ พร้อมปุ่มตกลง และแจ้งสาเหตุ
+      // ถ้าเป็น Prisma too-long ให้แปลเป็นข้อความอ่านง่าย
+      const prismaNice = prettifyPrismaTooLongMessage(msg);
+      if (prismaNice) msg = prismaNice;
+
+      // network/timeout/500 กรณีทั่วไป
+      const low = msg.toLowerCase();
+      if (!prismaNice) {
+        if (low.includes('network')) msg = 'การเชื่อมต่อล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง';
+        else if (low.includes('timeout')) msg = 'การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง';
+        else if (low.includes('500')) msg = 'เซิร์ฟเวอร์เกิดข้อผิดพลาดภายใน (500) กรุณาลองใหม่ภายหลัง';
+      }
+
+      // แสดงผลไม่สำเร็จ พร้อมปุ่มตกลง
       openResultPopup(false, 'บันทึกไม่สำเร็จ', msg);
     } finally {
       setLoading(false);
@@ -206,6 +291,9 @@ export default function StoreForm({
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 outline-none"
             required
           />
+          {form.name.length > NAME_MAX && (
+            <p className="mt-1 text-xs text-red-400">ยาวเกิน {NAME_MAX} ตัวอักษร</p>
+          )}
         </div>
         <div>
           <label className="block text-sm mb-1">Slug (URL)</label>
@@ -221,6 +309,8 @@ export default function StoreForm({
           />
           {slugErr ? (
             <p className="mt-1 text-xs text-red-400">{slugErr}</p>
+          ) : form.slug.length > SLUG_MAX ? (
+            <p className="mt-1 text-xs text-red-400">ยาวเกิน {SLUG_MAX} ตัวอักษร</p>
           ) : null}
         </div>
       </div>
@@ -253,6 +343,9 @@ export default function StoreForm({
             onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 outline-none"
           />
+          {(form.phone ?? '').length > PHONE_MAX && (
+            <p className="mt-1 text-xs text-red-400">ยาวเกิน {PHONE_MAX} ตัวอักษร</p>
+          )}
         </div>
       </div>
 
@@ -290,6 +383,9 @@ export default function StoreForm({
             onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))}
             className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 outline-none"
           />
+          {(form.meta_title ?? '').length > META_TITLE_MAX && (
+            <p className="mt-1 text-xs text-red-400">ยาวเกิน {META_TITLE_MAX} ตัวอักษร</p>
+          )}
         </div>
         <div>
           <label className="block text-sm mb-1">Meta Description</label>
@@ -305,17 +401,17 @@ export default function StoreForm({
         <label className="block text-sm mb-1">รูปปก (Cover)</label>
         <input type="file" accept="image/*" onChange={e => setCover(e.target.files?.[0] ?? null)} />
         {initial?.cover_image && (
-  <div className="mt-2 rounded-lg overflow-hidden border border-white/10 bg-white w-full max-w-xs">
-    <div className="relative aspect-[4/3]">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={initial.cover_image}
-        alt="cover"
-        className="absolute inset-0 h-full w-full object-contain"
-      />
-    </div>
-  </div>
-)}
+          <div className="mt-2 rounded-lg overflow-hidden border border-white/10 bg-white w/full max-w-xs">
+            <div className="relative aspect-[4/3]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={initial.cover_image}
+                alt="cover"
+                className="absolute inset-0 h-full w-full object-contain"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="pt-2">

@@ -1,3 +1,5 @@
+//src/app/admin/seo/page/page.tsx
+
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -6,6 +8,12 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import OgPicker4 from '@/components/admin/OgPicker4';
 import { Swal } from '@/lib/swal';
+
+// ✅ เพิ่มแค่คอนสแตนต์ขีดจำกัดให้ชัดเจน (ตาม Prisma)
+const PATH_MAX = 255;
+const TITLE_MAX = 255;
+const DESC_MAX = 512;
+const OG_MAX = 512;
 
 type PageSeo = {
   id: string;
@@ -48,8 +56,43 @@ export default function AdminSeoPagesPage() {
     noindex: boolean;
     jsonld: any;
   }): Promise<boolean> => {
-    if (!payload.path) throw new Error('โปรดระบุ path');
     if (loading) return false;
+
+    // ✅ ตรวจทุกช่องที่มีการกำหนดความยาวไว้
+    const errs: string[] = [];
+    const pathLen = (payload.path || '').length;
+    const titleLen = (payload.title || '').length;
+    const descLen = (payload.description || '').length;
+    const ogLen = (payload.og_image || '').length;
+
+    if (!payload.path) errs.push('Path: ต้องไม่เว้นว่าง');
+    if (pathLen > PATH_MAX) errs.push(`Path: ยาว ${pathLen} ตัวอักษร (เกิน ${PATH_MAX})`);
+    if (titleLen > TITLE_MAX) errs.push(`Title: ยาว ${titleLen} ตัวอักษร (เกิน ${TITLE_MAX})`);
+    if (descLen > DESC_MAX) errs.push(`Description: ยาว ${descLen} ตัวอักษร (เกิน ${DESC_MAX})`);
+    if (ogLen > OG_MAX) errs.push(`OG Image: ยาว ${ogLen} ตัวอักษร (เกิน ${OG_MAX})`);
+
+    // JSON-LD ต้องเป็น object ที่พาร์สได้ (ในฟอร์มเราคุมไว้แล้ว แต่กันพลาด)
+    if (payload.jsonld && typeof payload.jsonld === 'string') {
+      try { JSON.parse(payload.jsonld); } catch { errs.push('JSON-LD: ต้องเป็น JSON ที่ถูกต้อง'); }
+    }
+
+    if (errs.length > 0) {
+  await Swal.fire({
+    icon: 'error',
+    title: 'บันทึกไม่สำเร็จ',
+    html: `
+      <div style="text-align:left">
+        <div>มีฟิลด์ที่เกินเงื่อนไข:</div>
+        <ul style="margin-top:6px;padding-left:18px;">
+          ${errs.map(e => `<li>${e}</li>`).join('')}
+        </ul>
+      </div>
+    `,
+    confirmButtonText: 'ตกลง',          // ✅ ปุ่ม OK ชัดเจน
+    allowOutsideClick: true,             // ✅ ให้คลิกพื้นหลังเพื่อปิดได้
+  });
+  return false;
+}
 
     setLoading(true);
     try {
@@ -277,11 +320,10 @@ useEffect(() => {
   merged['@type'] = merged['@type'] || 'WebPage';
   merged.url = `${siteUrl}${p}`;
   merged.name = form.title || 'Sarisagroup';
-  merged.description = form.description || '';      // บังคับอัปเดตจากฟอร์ม
-  merged.image = ogList.filter(Boolean);            // บังคับอัปเดตจากตัวเลือกภาพ
+  merged.description = form.description || '';
+  merged.image = ogList.filter(Boolean);
 
-  setBtnLoading(true);
-  Swal.fire({ title: 'กำลังบันทึก…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+  setBtnLoading(true); // ให้ปุ่มหมุนพอ ไม่ใช้ Swal loading แล้ว
 
   try {
     const ok = await onSave({
@@ -294,13 +336,12 @@ useEffect(() => {
       jsonld: merged,
     });
 
-    Swal.close();
     if (ok) {
       await Swal.fire({ icon: 'success', title: 'บันทึก Page SEO สำเร็จ', confirmButtonText: 'ตกลง' });
       setEditing(null);
     }
+    // ถ้า ok === false แปลว่า validation ไม่ผ่าน — onSave แสดง Swal ให้แล้ว
   } catch (e: any) {
-    Swal.close();
     await Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: e?.message || 'ลองใหม่อีกครั้ง' });
   } finally {
     setBtnLoading(false);

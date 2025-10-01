@@ -1,4 +1,3 @@
-// src/app/admin/seo/site/page.tsx
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -7,6 +6,11 @@ import { Suspense, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Swal } from '@/lib/swal';
 import OgPicker4 from '@/components/admin/OgPicker4';
+
+const META_TITLE_MAX = 255;
+const META_DESC_MAX  = 512;
+const KEYWORDS_MAX   = 512; // ให้ตรงกับฝั่ง BE
+const OG_IMAGE_MAX   = 512;
 
 type SiteSeo = {
   meta_title?: string;
@@ -19,18 +23,21 @@ type SiteSeo = {
 function AdminSeoSitePageInner() {
   const [form, setForm] = useState<SiteSeo>({});
   const [loading, setLoading] = useState(false);
-  // เก็บรูป 4 ช่อง ให้เป็น controlled เสมอ
   const [ogList, setOgList] = useState<string[]>(['', '', '', '']);
 
-  // โหลดค่าปัจจุบัน
   useEffect(() => {
     (async () => {
       try {
         const data = await apiFetch<SiteSeo>('/admin/seo/site');
-        setForm(data || {});
+        // ✅ ดึงค่า keywords จาก jsonld ด้วย
+        setForm({
+          ...data,
+          keywords: data?.keywords || (data as any)?.jsonld?.keywords || '',
+        });
+
         const imgs = [
           data?.og_image,
-          ...(Array.isArray(data?.jsonld?.image) ? data!.jsonld.image : []),
+          ...(Array.isArray((data as any)?.jsonld?.image) ? (data as any).jsonld.image : []),
         ].filter(Boolean) as string[];
         const four = Array.from(new Set(imgs)).slice(0, 4);
         setOgList([...four, '', '', '', ''].slice(0, 4));
@@ -40,32 +47,111 @@ function AdminSeoSitePageInner() {
     })();
   }, []);
 
-  // บันทึก
   async function onSave() {
     setLoading(true);
     try {
       const primary = ogList.find(Boolean) || form.og_image || '';
-      const mergedJson =
-        typeof form.jsonld === 'object' && form.jsonld ? { ...form.jsonld } : {};
-      mergedJson.image = ogList.filter(Boolean);
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
+      // ---------- Validate หลายช่องก่อนยิง API ----------
+      const errs: string[] = [];
+
+      // 1) Meta Title
+      const titleLen = (form.meta_title || '').length;
+      if (titleLen > META_TITLE_MAX) {
+        errs.push(`Meta Title: ยาว ${titleLen} ตัวอักษร (เกินกำหนด ${META_TITLE_MAX})`);
+      }
+
+      // 2) Meta Description
+      const descLen = (form.meta_description || '').length;
+      if (descLen > META_DESC_MAX) {
+        errs.push(`Meta Description: ยาว ${descLen} ตัวอักษร (เกินกำหนด ${META_DESC_MAX})`);
+      }
+
+      // 3) Keywords (normalize ก่อนวัดความยาว)
+      const normalized = normalizeKeywords(form.keywords);
+      const kwLen = (normalized || '').length;
+      if (kwLen > KEYWORDS_MAX) {
+        errs.push(`Keywords: ยาว ${kwLen} ตัวอักษร (เกินกำหนด ${KEYWORDS_MAX})`);
+      }
+
+      // 4) OG Image (URL หลักช่องที่ 1 ที่จะส่งขึ้นฟิลด์ og_image)
+      const primaryLen = (primary || '').length;
+      if (primaryLen > OG_IMAGE_MAX) {
+        errs.push(`OG Image URL: ยาว ${primaryLen} ตัวอักษร (เกินกำหนด ${OG_IMAGE_MAX})`);
+      }
+
+      if (errs.length > 0) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'บันทึกไม่สำเร็จ',
+          html: `
+            <div style="text-align:left">
+              <div>มีฟิลด์ที่เกินเงื่อนไข:</div>
+              <ul style="margin-top:6px;padding-left:18px;">
+                ${errs.map(e => `<li>${e}</li>`).join('')}
+              </ul>
+              <div style="margin-top:8px;opacity:.85">
+                โปรดแก้ไขตามรายการข้างต้นแล้วบันทึกอีกครั้ง
+              </div>
+            </div>
+          `,
+        });
+        return; // ⛔️ ไม่ยิง API ถ้ายังไม่ผ่าน validation
+      }
+
+      const safeKeywords = normalized; // ผ่านแล้ว ไม่ต้อง clamp เพิ่ม
+
+      // ---------- Build JSON-LD ----------
+      const mergedJson = (typeof form.jsonld === 'object' && form.jsonld) ? { ...form.jsonld } : {};
+      mergedJson['@context'] = 'https://schema.org';
+      mergedJson['@type'] = mergedJson['@type'] || 'WebSite';
+      mergedJson.name = form.meta_title || 'Sarisagroup';
+      mergedJson.description = form.meta_description || '';
+      mergedJson.url = siteUrl;
+      mergedJson.image = ogList.filter(Boolean);
+      if (safeKeywords) mergedJson.keywords = safeKeywords; // ✅ sync ลง JSON-LD
+
+      // ---------- Call API ----------
       await apiFetch('/admin/seo/site', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           meta_title: form.meta_title ?? '',
           meta_description: form.meta_description ?? '',
-          keywords: form.keywords ?? '',
+          keywords: safeKeywords,
           og_image: primary,
           jsonld: mergedJson,
         }),
       });
 
-      setForm((s) => ({ ...s, og_image: primary, jsonld: mergedJson }));
-      Swal.fire({ icon: 'success', title: 'บันทึก Global SEO สำเร็จ', confirmButtonText: 'ตกลง' });
+      setForm((s) => ({ ...s, og_image: primary, jsonld: mergedJson, keywords: safeKeywords }));
+      await Swal.fire({ icon: 'success', title: 'บันทึก Global SEO สำเร็จ', confirmButtonText: 'ตกลง' });
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: e?.message || 'ลองใหม่อีกครั้ง' });
+      // ✅ อธิบายเหตุผลให้ชัดเจน (fallback จาก BE)
+      const status = e?.status ?? e?.code ?? '';
+      const raw = (e?.message || e?.error || '').toString();
+
+      let hint = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+      if (
+        raw.includes('KEYWORDS_TOO_LONG') ||
+        raw.toLowerCase().includes('too long') ||
+        raw.includes(String(KEYWORDS_MAX))
+      ) {
+        hint = `บันทึกไม่สำเร็จ: คำหลัก (Keywords) ยาวเกินกำหนด — ใส่ได้สูงสุด ${KEYWORDS_MAX} ตัวอักษร (รวมเครื่องหมายจุลภาคและช่องว่าง)`;
+      } else if (status === 401 || raw.toLowerCase().includes('unauthorized')) {
+        hint = 'ไม่ได้รับอนุญาต กรุณาเข้าสู่ระบบใหม่';
+      } else if (status === 413 || raw.toLowerCase().includes('payload too large')) {
+        hint = 'ข้อมูลที่ส่งมีขนาดใหญ่เกินไป';
+      }
+
+      await Swal.fire({
+        icon: 'error',
+        title: 'บันทึกไม่สำเร็จ',
+        text: hint,
+      });
     } finally {
+      // ✅ สำคัญ: ปิดสถานะโหลดไม่ให้ปุ่มค้าง/ต้องรีเฟรช
       setLoading(false);
     }
   }
@@ -99,7 +185,6 @@ function AdminSeoSitePageInner() {
         />
       </Field>
 
-      {/* ✅ ช่องอัปโหลดสี่ช่อง (ช่องที่ 1 = รูปหลัก) */}
       <OgPicker4 label="OG Images (สูงสุด 4) • ช่องที่ 1 คือรูปหลัก" value={ogList} onChange={setOgList} />
 
       <Field label="JSON-LD (object)">
@@ -110,12 +195,6 @@ function AdminSeoSitePageInner() {
           onChange={(e) =>
             setForm((s) => ({ ...s, jsonld: parseOrRaw(e.target.value) }))
           }
-          placeholder={`ตัวอย่าง: {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "Sarisagroup",
-  "url": "${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}"
-}`}
         />
       </Field>
 
@@ -140,7 +219,6 @@ export default function AdminSeoSitePage() {
   );
 }
 
-/* ---------- UI helper ---------- */
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
@@ -150,6 +228,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/* ---------- utils ---------- */
 function parseOrRaw(s: string) { try { return JSON.parse(s); } catch { return s; } }
 function toShow(v: any) { return typeof v === 'string' ? v : (v ? JSON.stringify(v, null, 2) : ''); }
+
+/* คง normalizeKeywords ฝั่ง FE ไว้เพื่อ reuse */
+function normalizeKeywords(v?: string) {
+  if (!v) return '';
+  const arr = String(v)
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  return arr.join(', ');
+}
