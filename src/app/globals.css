@@ -13,6 +13,12 @@
   --gold-700: #9a7510;
 
   --lux-dark: #4b3832;
+
+  /* ===== Sticky header – anchor / auto-scroll offset ===== */
+  --header-h: 64px;        /* ต้องเท่าความสูง header บนมือถือ (เช่น h-16) */
+}
+@media (min-width: 1024px) {
+  :root { --header-h: 72px; }  /* ความสูง header เดสก์ท็อป */
 }
 
 html, body {
@@ -65,7 +71,7 @@ html, body {
 }
 .btn-ghost-pill:hover { background: #ffffff; }
 
-/* ===== Video slider fixes (paste this block) ===== */
+/* ===== Video slider fixes ===== */
 
 /* 1) ให้ wrapper ยืดสไลด์แต่ละใบเท่ากัน และรีเซ็ตความสูงที่ Swiper ใส่มา */
 .video-swiper .swiper-wrapper{ align-items: stretch; }
@@ -75,14 +81,13 @@ html, body {
 .video-swiper .swiper-slide > .card{
   display:flex;
   flex-direction:column;
-  /* ไม่ตั้ง height:100% เพื่อไม่ให้การ์ดสูงเกินจำเป็น */
 }
 
 /* 3) รูปด้านบนให้เป็นสัดส่วน 16:9 เท่ากันทุกใบ */
 .video-swiper .swiper-slide figure{
   position:relative;
   width:100%;
-  aspect-ratio:16/9;     /* บราวเซอร์ใหม่รองรับดี และแทนที่ class อื่นๆ ได้ */
+  aspect-ratio:16/9;
   overflow:hidden;
 }
 
@@ -97,16 +102,16 @@ html, body {
   line-height:1.25rem;       /* leading-5 */
   font-weight:500;
   min-height:2.5rem;         /* = 2 บรรทัดพอดี */
-  margin:0;                  /* กัน margin แปลกๆ จาก lib อื่น */
+  margin:0;
 }
 
 /* 5) เพิ่มช่องไฟแนวตั้ง “ระหว่างแถว” โดยไม่เพิ่มช่องไฟแนวนอน */
-.video-swiper .swiper{ --row-gap: 24px; }          /* ปรับค่านี้ได้ 16–32 */
+.video-swiper .swiper{ --row-gap: 24px; }          /* ปรับ 16–32 ได้ */
 .video-swiper .swiper-grid .swiper-wrapper{
   row-gap: var(--row-gap) !important;
 }
 
-/* 6) bullets (คงสไตล์เดิม) */
+/* 6) bullets */
 .video-pagination .swiper-pagination-bullet{
   width:10px; height:10px; background:#d1d5db; opacity:1; border-radius:9999px;
   transition:transform .2s, background .2s, box-shadow .2s;
@@ -123,6 +128,23 @@ html, body {
 html[data-scroll-behavior="smooth"] { scroll-behavior: smooth; }
 
 /* ให้ Swal อยู่สูงกว่า modal ของเรา */
-.swal2-container {
-  z-index: 100000 !important;
+.swal2-container { z-index: 100000 !important; }
+
+/* ===== Anchor offset / auto-scroll (with fallback) ===== */
+/* Fallback */
+html { scroll-padding-top: var(--header-h); }
+/* ใช้ safe-area เมื่อรองรับ */
+html { scroll-padding-top: calc(var(--header-h) + env(safe-area-inset-top)); }
+/* ให้ element ที่ถูกเลื่อนไปหา (#id) เผื่อระยะหัวเว็บเหมือนกัน */
+[id], [data-anchor] {
+  scroll-margin-top: var(--header-h);
+  scroll-margin-top: calc(var(--header-h) + env(safe-area-inset-top));
 }
+
+/* ===== ซ่อน scrollbar ทุกระบบปฏิบัติการ ===== */
+/* Chrome / Safari / Edge (WebKit) */
+::-webkit-scrollbar { display: none; }
+/* Firefox */
+html { scrollbar-width: none; }
+/* IE / Edge Legacy */
+html { -ms-overflow-style: none; }

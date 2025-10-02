@@ -66,7 +66,10 @@ export default function EventsSwiper({ items }: { items: EventCard[] }) {
                   width={1600}
                   height={1066}
                   className="h-60 w-full object-cover md:h-64"
-                  unoptimized
+                  // ❌ ลบ unoptimized ออก
+                  // ✅ แนะนำ sizes ให้เหมาะกับ breakpoints ของ Swiper
+                  sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 96vw"
+                  priority={false}
                 />
               </figure>
               <div className="p-4 md:p-5">

@@ -14,8 +14,7 @@ type Brand = {
   manifestUrl?: string | null;
   icon16?: string | null;
   icon32?: string | null;
-  // ไม่ใช้ชุด apple หลายขนาดแล้ว เพื่อลดความสับสน/ชน
-  apple180?: string | null;
+  apple180?: string | null; // kept for future, not used directly
   ogDefault?: string | null;
 };
 
@@ -33,7 +32,7 @@ async function fetchBrand(): Promise<Brand> {
   }
 }
 
-/* -------------------- ⬇️ เพิ่มเฉพาะนี้: Global SEO (public) ⬇️ -------------------- */
+/* -------------------- Global SEO (public) -------------------- */
 type PublicSiteSeo = {
   meta_title?: string;
   meta_description?: string;
@@ -55,7 +54,6 @@ async function fetchGlobalSeo(): Promise<PublicSiteSeo | null> {
     return null;
   }
 }
-/* -------------------- ⬆️ เพิ่มเฉพาะนี้: Global SEO (public) ⬆️ -------------------- */
 
 /** Metadata base (ถูก override บางฟิลด์ด้วย brand runtime) */
 export const metadata: Metadata = {
@@ -64,11 +62,7 @@ export const metadata: Metadata = {
     'ครัวคุณจี๊ด ร้านอาหารพื้นบ้านและคาเฟ่ บรรยากาศอบอุ่น อาหารทะเลสด อร่อย คุ้มค่า พร้อมบริการชุมชนของ Sarisagroup',
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: '/', languages: { 'th-TH': '/' } },
-
-  // ── manifest สำหรับ Android/Chrome
   manifest: '/favicon/site.webmanifest',
-
-  // ── ไอคอน: คง favicon (16/32) ไว้ (ตัด apple ออกไปเพื่อกันซ้ำกับ <link> ด้านล่าง)
   icons: {
     icon: [
       { url: '/favicon/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -76,7 +70,6 @@ export const metadata: Metadata = {
     ],
     shortcut: ['/favicon/favicon.ico'],
   },
-
   openGraph: {
     type: 'website',
     siteName: BRAND_DEFAULT,
@@ -112,7 +105,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const brand = await fetchBrand();
   const BRAND = brand.brandName || BRAND_DEFAULT;
 
-    /* ⬇️ ดึง Global SEO เพื่อฝังลง head (SSR ให้ติด view-source) */
+  // ดึง Global SEO เพื่อฝังลง head (SSR ให้ติด view-source)
   const site = await fetchGlobalSeo();
   const siteJsonLd: Record<string, any> | null = site
     ? {
@@ -125,8 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           ? site!.jsonld.image
           : (site?.og_image ? [site.og_image] : []),
         keywords: site?.jsonld?.keywords || site?.keywords || undefined,
-
-        // ✅ เพิ่มตรงนี้ เพื่อ merge JSON-LD อื่น ๆ ที่กรอกในแอดมิน
+        // merge JSON-LD จากแอดมิน (ถ้าซ้ำคีย์ ให้ค่าจากแอดมินทับ)
         ...site.jsonld,
       }
     : null;
@@ -139,18 +131,41 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     ].filter(Boolean) as any[],
   };
 
-  const website = { '@context': 'https://schema.org', '@type': 'WebSite', name: BRAND, url: SITE_URL };
   const org = { '@context': 'https://schema.org', '@type': 'Organization', name: BRAND, url: SITE_URL };
 
   // ใช้ไฟล์ root เดียว พร้อมเวอร์ชันเพื่อ bust cache
   const appleTouchHref = '/apple-touch-icon.png?v=4';
 
+  // Preconnect targets
+  const API_BASE =
+    (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+
+  const preconnectHosts = [
+    'https://res.cloudinary.com',
+    'https://images.unsplash.com',
+    'https://i.ytimg.com',
+    'https://img.youtube.com',
+    'https://scontent.xx.fbcdn.net',
+    'https://cdn.tiktokcdn.com',
+    API_BASE || null,
+  ].filter(Boolean) as string[];
+
   return (
     <html lang="th">
       <head>
         <meta charSet="utf-8" />
+        <meta name="color-scheme" content="dark light" />
+        <meta name="referrer" content="origin-when-cross-origin" />
 
-        {/* manifest (ถ้าแบรนด์ override มาก็ให้สิทธิ์แบรนด์) */}
+        {/* Preconnect/DNS Prefetch เพื่อเร่งโหลด asset ภายนอก */}
+        {preconnectHosts.map((h, i) => (
+          <link key={`pc-${i}`} rel="preconnect" href={h} crossOrigin="" />
+        ))}
+        {preconnectHosts.map((h, i) => (
+          <link key={`dns-${i}`} rel="dns-prefetch" href={h} />
+        ))}
+
+        {/* manifest/ธีมจากแบรนด์ (ถ้ามี) */}
         {brand.manifestUrl && <link rel="manifest" href={brand.manifestUrl} />}
         {brand.themeColor && <meta name="theme-color" content={brand.themeColor} />}
 
@@ -159,16 +174,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <link key={`ico-${i}`} rel="icon" href={it.url} sizes={it.sizes} />
         ))}
 
-        {/* ===== iOS: ต้องอยู่ root และมีแค่ตัวเดียว ===== */}
+        {/* iOS: ต้องอยู่ root และมีแค่ตัวเดียว */}
         <link rel="apple-touch-icon" sizes="180x180" href={appleTouchHref} />
-        <link rel="apple-touch-icon-precomposed" sizes="180x180" href={appleTouchHref} />
 
-        {/* ⬇️ ฝัง Global SEO ลงไปให้เห็นใน view-source */}
+        {/* Meta/JSON-LD จาก Global SEO */}
         {site?.meta_description && <meta name="description" content={site.meta_description} />}
         {site?.keywords && <meta name="keywords" content={site.keywords} />}
         {siteJsonLd && <JsonLd id="ld-site" data={siteJsonLd} />}
 
-        <JsonLd id="ld-website" data={website} />
+        {/* Organization JSON-LD */}
         <JsonLd id="ld-organization" data={org} />
 
         {/* @ts-expect-error Async Server Component */}
@@ -182,10 +196,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         )}
       </head>
       <body className="min-h-screen bg-base-100 text-base-content">
-        <SwalBridge />
-        <Providers>{children}</Providers>
-        <TrackingInjectorBody />
-      </body>
+  <SwalBridge />
+  <Providers>
+    {/* ให้ Next ใช้กรอบนี้เป็น boundary สำหรับ scroll/focus */}
+    <main id="content" data-nextjs-scroll-focus-boundary>
+      {children}
+    </main>
+  </Providers>
+  <TrackingInjectorBody />
+</body>
     </html>
   );
 }
