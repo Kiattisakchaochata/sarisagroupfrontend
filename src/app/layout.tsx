@@ -112,7 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const brand = await fetchBrand();
   const BRAND = brand.brandName || BRAND_DEFAULT;
 
-  /* ⬇️ ดึง Global SEO เพื่อฝังลง head (SSR ให้ติด view-source) */
+    /* ⬇️ ดึง Global SEO เพื่อฝังลง head (SSR ให้ติด view-source) */
   const site = await fetchGlobalSeo();
   const siteJsonLd: Record<string, any> | null = site
     ? {
@@ -125,6 +125,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           ? site!.jsonld.image
           : (site?.og_image ? [site.og_image] : []),
         keywords: site?.jsonld?.keywords || site?.keywords || undefined,
+
+        // ✅ เพิ่มตรงนี้ เพื่อ merge JSON-LD อื่น ๆ ที่กรอกในแอดมิน
+        ...site.jsonld,
       }
     : null;
 
