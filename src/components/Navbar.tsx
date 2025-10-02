@@ -28,8 +28,6 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);    // dropdown โปรไฟล์
   const menuRef = useRef<HTMLDivElement | null>(null);
   const profileBtnRef = useRef<HTMLButtonElement | null>(null);
-  const headerRef = useRef<HTMLElement | null>(null);
-  
 
   const router = useRouter();
   const pathname = usePathname();
@@ -55,17 +53,6 @@ export default function Navbar() {
     if (menuOpen) document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [menuOpen]);
-
-  // ใส่ id/tabIndex/data-* แบบ client-only เพื่อเลี่ยง hydration mismatch
-// ตั้งค่า attribute ให้ header หลัง hydrate เพื่อลดการโฟกัส/ออโต้สโครลผิดตัว
-useEffect(() => {
-  const el = headerRef.current;
-  if (!el) return;
-  // บอก assistive tech ว่า header ไม่ใช่เป้าหมาย focus หลัก และไม่ควรถูกโฟกัสโดยอัตโนมัติ
-  el.setAttribute('aria-hidden', 'true');
-  el.setAttribute('tabindex', '-1');
-  el.setAttribute('data-sticky-header', 'true');
-}, []);
 
   // ปุ่มคีย์บอร์ด
   useEffect(() => {
@@ -267,13 +254,11 @@ useEffect(() => {
 
   return (
     <header
-  ref={headerRef}                         // ⬅️ ผูก ref
-  suppressHydrationWarning                // ⬅️ ปิด warning บน tag นี้
-  className={[
-    'sticky top-0 z-50 w-full transition-all',
-    atTop ? '' : 'border-b border-black/5 shadow-[0_6px_18px_rgba(0,0,0,0.08)]',
-  ].join(' ')}
->
+      className={[
+        'sticky top-0 z-50 w-full transition-all',
+        atTop ? '' : 'border-b border-black/5 shadow-[0_6px_18px_rgba(0,0,0,0.08)]',
+      ].join(' ')}
+    >
       <div className="bg-gradient-to-b from-[#fffdfa]/90 to-[#faf6ef]/80 backdrop-blur-xl">
         <nav className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="flex items-center gap-3 py-3">
